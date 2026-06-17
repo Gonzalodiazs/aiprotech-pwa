@@ -111,7 +111,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .scan-result .row .v{color:var(--ink);font-family:var(--mono)}
 .inc-tipo{background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 8px;color:var(--ink-dim);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
 .inc-tipo.sel{border-color:var(--amber);background:rgba(227,168,63,.12);color:var(--amber)}
-.pago{flex:1 1 30%;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:13px 6px;min-height:48px;color:var(--ink-dim);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:.15s var(--ease)}
+.pago{flex:1 1 44%;background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:16px 8px;min-height:60px;color:var(--ink-dim);font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:.15s var(--ease)}
 .pago:active{transform:scale(.97)}
 .pago.on{border-color:var(--green);background:rgba(66,185,133,.14);color:var(--green)}
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
@@ -133,6 +133,11 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
     <span class="route-chip" id="routeChip"><span class="dot"></span>EN RUTA</span>
   </div>
   <div class="body" id="homeBody">
+    <button onclick="openScan()" aria-label="Escanear factura" style="width:100%;border:none;border-radius:18px;padding:24px 18px;margin-bottom:14px;background:linear-gradient(135deg,#F2A03D,#E07F1A);color:#2A1A05;font-family:var(--sans);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 12px 30px rgba(199,117,20,.4);animation:rise .5s var(--ease) both">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2A1A05" stroke-width="1.7"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10"/></svg>
+      <span style="font-size:22px;font-weight:700;letter-spacing:-.01em">Escanear factura</span>
+      <span style="font-size:12.5px;font-weight:600;opacity:.78">boleta o factura → elegir forma de pago</span>
+    </button>
     <div class="card" style="animation-delay:.05s">
       <div class="c-lbl">Efectivo a rendir</div>
       <div class="cash"><div class="big" id="rEfectivo">$0</div><div class="sub" id="rSub">0 de 0 entregas</div></div>
