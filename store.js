@@ -229,13 +229,16 @@
       var rnom = i.repartidor || (data.repartidor ? data.repartidor.nombre : 'Repartidor');
       var veh = data.vehiculos.filter(function (v) { return v.repartidorId === rid; })[0];
       var pat = i.patente || (veh ? veh.patente : '');
+      // Precio unitario REAL si el chofer lo ingresa; si no, estimación de referencia (marcada).
+      var precioUnit = Number(i.precioUnit) || 0;
+      var precioUsado = precioUnit > 0 ? precioUnit : PRECIO_UNIT_DEMO;
       var n = {
         id: uid('i'), producto: i.producto || 'Producto', tipo: i.tipo || 'MAL_ESTADO',
         esperada: Number(i.esperada) || 0, entregada: Number(i.entregada) || 0, faltante: faltante,
         motivo: i.motivo || '', estado: 'REPORTADA',
         repartidorId: rid, repartidor: rnom, patente: pat,
         guia: i.guia || '', factura: i.factura || '', cliente: i.cliente || '',
-        montoNota: faltante * PRECIO_UNIT_DEMO, tipoNota: tipoNota, ts: now()
+        montoNota: faltante * precioUsado, montoEstimado: (precioUnit <= 0), precioUnit: precioUsado, tipoNota: tipoNota, ts: now()
       };
       data.incidencias.push(n);
       // refleja como alerta en el dashboard

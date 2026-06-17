@@ -68,40 +68,87 @@
     return fetch(URL + '/rest/v1/documentos?id=eq.' + id, {
       method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, H()),
       body: JSON.stringify({ conciliado: !!val })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('marcar-conciliado ' + r.status);
+      return { ok: true };
+    }).catch(function (err) {
+      try { console.warn('marcarConciliado falló:', err && err.message); } catch (e) {}
+      return { ok: false, error: (err && err.message) || 'error' };
     });
+  }
+
+  // ── Cierre de entrega de la ruta (PATCH estado=entregada) con su propia cola offline ──
+  // PATCH SOLO la columna 'estado' (garantizada); el receptor/firma viajan en el acta/documento.
+  var EQKEY = 'cp_cola_entregas';
+  function eqGet() { try { return JSON.parse(localStorage.getItem(EQKEY) || '[]'); } catch (e) { return []; } }
+  function eqSet(a) { try { localStorage.setItem(EQKEY, JSON.stringify(a)); } catch (e) {} }
+  function patchEntrega(id) {
+    return fetch(URL + '/rest/v1/entregas?id=eq.' + encodeURIComponent(id), {
+      method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, H()),
+      body: JSON.stringify({ estado: 'entregada' })
+    }).then(function (r) { if (!r.ok) throw new Error('patch-entrega ' + r.status); return true; });
+  }
+  function cerrarEntrega(id, meta) {
+    if (!id) return Promise.resolve({ ok: false });
+    return patchEntrega(id).then(function () { return { ok: true }; }).catch(function () {
+      var q = eqGet(); q.push({ id: id, meta: meta || {}, t: new Date().getTime() }); eqSet(q);
+      return { _encolado: true, pendientes: q.length };
+    });
+  }
+  function sincronizarEntregas() {
+    var q = eqGet(); if (!q.length) return Promise.resolve(0); var ok = 0;
+    return q.reduce(function (p, it) {
+      return p.then(function () { return patchEntrega(it.id).then(function () { ok++; it._done = true; }).catch(function () {}); });
+    }, Promise.resolve()).then(function () { eqSet(q.filter(function (i) { return !i._done; })); return ok; });
   }
 
   // ── Cola OFFLINE: si no hay señal, guarda local y sincroniza al volver ──
   var QKEY = 'cp_cola_offline';
   function qGet() { try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch (e) { return []; } }
-  function qSet(a) { try { localStorage.setItem(QKEY, JSON.stringify(a)); } catch (e) {} }
+  function qSet(a) { try { localStorage.setItem(QKEY, JSON.stringify(a)); return true; } catch (e) { return false; } }
 
   function insertDocSeguro(doc) {
     return insertDoc(doc).catch(function (err) {
-      var q = qGet(); q.push({ doc: doc, t: new Date().getTime() }); qSet(q);
-      return { _encolado: true, pendientes: q.length };
+      var msg = (err && err.message) ? String(err.message) : 'sin conexión';
+      var m = /insert\s+(\d{3})/.exec(msg);
+      var status = m ? Number(m[1]) : 0;
+      var permanente = status >= 400 && status < 500; // 401/403/400 no se arregla solo con señal
+      try { console.warn('[CP] insertDoc encolado:', msg); } catch (e) {}
+      var q = qGet(); q.push({ doc: doc, t: new Date().getTime(), err: msg, status: status, permanente: permanente });
+      var saved = qSet(q); // si el almacenamiento está lleno, qSet=false → avisar (no perder en silencio)
+      return { _encolado: true, pendientes: q.length, error: msg, permanente: permanente, _persistError: !saved };
     });
   }
   function sincronizarCola() {
     var q = qGet();
-    if (!q.length) return Promise.resolve(0);
+    if (!q.length) return Promise.resolve({ ok: 0, fallidos: 0 });
     var ok = 0;
     // procesa en serie para no saturar
     return q.reduce(function (p, item) {
       return p.then(function () {
-        return insertDoc(item.doc).then(function () { ok++; item._done = true; }).catch(function () {});
+        return insertDoc(item.doc).then(function () { ok++; item._done = true; })
+          .catch(function (e) {
+            item.intentos = (item.intentos || 0) + 1;
+            item.err = (e && e.message) ? String(e.message) : item.err;
+            var mm = /insert\s+(4\d\d)/.exec(item.err || '');
+            if (mm || item.intentos >= 5) item._bloqueado = true; // veneno: no reintentar a ciegas (no se borra)
+            try { console.warn('[CP] sincronizarCola falló folio=' + (item.doc && item.doc.folio) + ': ' + item.err); } catch (e2) {}
+          });
       });
     }, Promise.resolve()).then(function () {
-      qSet(q.filter(function (i) { return !i._done; }));
-      return ok;
+      var restantes = q.filter(function (i) { return !i._done; });
+      qSet(restantes); // conserva pendientes Y bloqueados (nunca se pierde un documento)
+      return { ok: ok, fallidos: restantes.length };
     });
   }
   function pendientes() { return qGet().length; }
+  function bloqueados() { return qGet().filter(function (i) { return i._bloqueado; }); }
   // auto-sincroniza al recuperar señal y al abrir la app
-  window.addEventListener('online', function () { sincronizarCola(); });
-  setTimeout(function () { if (navigator.onLine) sincronizarCola(); }, 3000);
+  window.addEventListener('online', function () { sincronizarCola(); sincronizarEntregas(); });
+  setTimeout(function () { if (navigator.onLine) { sincronizarCola(); sincronizarEntregas(); } }, 3000);
 
   window.CPSupabase = { URL: URL, KEY: KEY, uploadPDF: uploadPDF, insertDoc: insertDoc, insertDocSeguro: insertDocSeguro,
     listDocs: listDocs, marcarConciliado: marcarConciliado, extraerFactura: extraerFactura,
-    sincronizarCola: sincronizarCola, pendientes: pendientes };
+    sincronizarCola: sincronizarCola, pendientes: pendientes, bloqueados: bloqueados,
+    cerrarEntrega: cerrarEntrega, sincronizarEntregas: sincronizarEntregas };
 })();

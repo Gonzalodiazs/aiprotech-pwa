@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="./pwa/icon-192.png">
 <script src="./store.js"></script>
 <script src="./vendor/cp-auth.js"></script>
-<script>if(!CPAuth.requireSession())throw 0;</script>
+<script>try{ if(!CPAuth.requireSession()) throw 0; }catch(e){ if(e!==0){ document.body.innerHTML='<div style="padding:28px;font-family:sans-serif;color:#232A33;line-height:1.5">No se pudo verificar la sesión. Activa el almacenamiento del navegador (no uses modo incógnito) y recarga la página.</div>'; } throw 0; }</script>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/xlsx.full.min.js"></script>
 <script src="./vendor/zxing.min.js"></script>
@@ -71,7 +71,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .deliv .st{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:6px}
 .st-ok{color:var(--green);background:rgba(66,185,133,.13)}.st-pend{color:var(--amber);background:rgba(227,168,63,.13)}
 .tabbar{position:absolute;bottom:0;left:0;right:0;min-height:72px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 14px calc(env(safe-area-inset-bottom)) 14px;z-index:50}
-.tab{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-faint);font-size:9px;cursor:pointer;transition:.2s;flex:1}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink-faint);font-size:9px;cursor:pointer;transition:.2s;flex:1;min-height:48px;padding:6px 4px}
 .tab svg{width:21px;height:21px}
 .tab.active{color:var(--blue)}
 .tab.scan{margin-top:-26px}
@@ -121,6 +121,19 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .netpill .d{width:7px;height:7px;border-radius:50%}
 .netpill.on .d{background:var(--green);box-shadow:0 0 6px rgba(66,185,133,.7)}
 .netpill.off .d{background:var(--amber);box-shadow:0 0 6px rgba(227,168,63,.7)}
+.netpill.alert .d{background:var(--red);box-shadow:0 0 6px rgba(200,64,46,.7)}
+/* Entradas suaves que faltaban (hero + banner instalar) */
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes msgIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+/* Spinner del botón "Enviar a planta" (feedback de carga) */
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn.loading{position:relative;color:transparent!important;pointer-events:none}
+.btn.loading::after{content:'';position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+/* Puntos pulsantes mientras lee IA/OCR */
+.cp-dots{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+.cp-dots i{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block;animation:cpDot 1s ease-in-out infinite}
+.cp-dots i:nth-child(2){animation-delay:.16s}.cp-dots i:nth-child(3){animation-delay:.32s}
+@keyframes cpDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 </style>
 </head>
 <body>
@@ -279,6 +292,9 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
       <input id="incEsperada" type="number" placeholder="Esperado" style="flex:1;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;color:var(--ink);font-family:var(--mono);font-size:13px;outline:none">
       <input id="incEntregada" type="number" placeholder="Entregado" style="flex:1;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;color:var(--ink);font-family:var(--mono);font-size:13px;outline:none">
     </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <input id="incPrecioUnit" type="number" inputmode="numeric" placeholder="Precio unitario $ (opcional)" style="flex:1;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;color:var(--ink);font-family:var(--mono);font-size:13px;outline:none">
+    </div>
     <textarea id="incMotivo" rows="2" placeholder="Motivo (ej: caja golpeada, producto vencido...)" style="width:100%;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;margin-bottom:14px"></textarea>
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="closeInc()">Cancelar</button>
@@ -342,7 +358,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 // ───────── Conexión con backend ConciliaPro ─────────
 // Configura aquí tu API. Si no responde, la app cae a modo demo.
 var CONFIG = {
-  API: localStorage.getItem('cp_api') || 'http://localhost:3000/api',
+  API: (localStorage.getItem('cp_api') || (location.origin + '/api')).replace(/\/$/,''),
   TENANT: localStorage.getItem('cp_tenant') || 'demo-tenant',
   REPARTIDOR: localStorage.getItem('cp_repartidor') || 'demo-repartidor',
   TOKEN: localStorage.getItem('cp_token') || '',
@@ -362,7 +378,7 @@ window.addEventListener('load',function(){ renderHome(); startGps(); });
 if(window.CP) CP.on(renderHome);
 
 // ───────── Render del inicio desde el almacén local ─────────
-var selEntregaId = null;
+var selEntregaId = null, selEntregaRemota = null, entregasPlanta = [];
 function renderHome(){
   if(!window.CP) return;
   var k = CP.kpiRepartidor();
@@ -380,20 +396,30 @@ function cargarMisEntregas(){
   var pf=(function(){try{return JSON.parse(localStorage.getItem('cp_perfil')||'{}');}catch(e){return {};}})();
   var pat=pf.patente||'';
   if(!pat){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">Sin patente asignada. Pídele a planta que cargue tu ruta.</div>'; return; }
+  box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">↻ Cargando entregas…</div>';
   var hoy=new Date().toISOString().slice(0,10);
   fetch(CPAuth.SB_URL+'/rest/v1/entregas?patente=eq.'+encodeURIComponent(pat)+'&fecha=eq.'+hoy+'&order=orden.asc.nullslast&select=*',{headers:{apikey:CPAuth.ANON,Authorization:'Bearer '+CPAuth.ANON}})
-  .then(function(r){return r.json();}).then(function(es){ es=Array.isArray(es)?es:[];
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(es){ es=Array.isArray(es)?es:[];
+    entregasPlanta=es; // cache para el flujo de firma (firmar la entrega REAL de planta)
     var ent=es.filter(function(e){return e.estado==='entregada';}).length;
     var sub=document.getElementById('rSub'); if(sub) sub.textContent=ent+' de '+es.length+' entregas';
     var prog=document.getElementById('rProg'); if(prog) prog.style.width=(es.length?Math.round(ent/es.length*100):0)+'%';
     if(!es.length){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">No tienes entregas asignadas para hoy. Planta carga tu ruta en el sistema.</div>'; return; }
     box.innerHTML=es.map(function(e,idx){ var done=e.estado==='entregada';
-      var st=done?'<span class="st st-ok">✓ entregada</span>':'<span class="st st-pend">pendiente</span>';
+      var st=done?'<span class="st st-ok">✓ entregada</span>':'<span class="st st-pend">firmar →</span>';
       var dir=(e.direccion||'')+(e.comuna?' · '+e.comuna:'');
       var extra=(e.monto?' · '+(window.CP?CP.clp(e.monto):'$'+e.monto):'')+(e.folio?' · '+e.folio:'');
-      return '<div class="deliv"><div class="num">'+(e.orden||idx+1)+'</div><div class="info"><div class="n">'+(e.cliente||e.codigo_cliente||'—')+'</div><div class="a">'+dir+extra+'</div></div>'+st+'</div>';
+      var tap=done?'':' onclick="openSheet(\''+e.id+'\')" style="cursor:pointer"';
+      return '<div class="deliv"'+tap+'><div class="num">'+(e.orden||idx+1)+'</div><div class="info"><div class="n">'+(e.cliente||e.codigo_cliente||'—')+'</div><div class="a">'+dir+extra+'</div></div>'+st+'</div>';
     }).join('');
-  }).catch(function(){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">No se pudo cargar tu ruta (revisa la conexión).</div>'; });
+  }).catch(function(err){
+    var m=(err&&err.message)||'';
+    var msg='No se pudo cargar tu ruta (revisa la conexión).';
+    if(m.indexOf('HTTP 401')>=0) msg='Tu sesión expiró. Vuelve a iniciar sesión.';
+    else if(m.indexOf('HTTP 403')>=0) msg='Sin permisos para esta patente. Avisa a planta.';
+    else if(m.indexOf('HTTP 5')>=0) msg='El servidor de planta no respondió. Reintenta en un momento.';
+    box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">'+msg+' <button onclick="cargarMisEntregas()" style="margin-left:6px;background:rgba(46,102,201,.12);color:var(--blue);border:1px solid rgba(46,102,201,.3);border-radius:8px;padding:4px 10px;font-family:var(--sans);font-size:11px;font-weight:600;cursor:pointer">↻ Reintentar</button></div>';
+  });
 }
 // Nueva entrega
 function openNuevaEntrega(){document.getElementById('neBg').classList.add('open');document.getElementById('neSheet').classList.add('open');}
@@ -407,29 +433,56 @@ function guardarEntrega(){
 }
 
 // ───────── GPS: envía ping de posición cada 15s ─────────
-var ultimaPos = null;
+var ultimaPos = null, gpsAvisado = false;
 function startGps(){
   // Captura la posición REAL del conductor (sin backend demo); se adjunta a cada factura enviada.
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(function(p){
-      ultimaPos = { lat: p.coords.latitude, lng: p.coords.longitude };
-    }, function(){}, { enableHighAccuracy: true });
+      ultimaPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      try{ localStorage.setItem('cp_ultimaPos', JSON.stringify(ultimaPos)); }catch(e){}
+      gpsAvisado = false;
+    }, function(err){
+      // Antes el callback estaba vacío: el permiso denegado / timeout pasaba inadvertido.
+      if(err && err.code===1 && !gpsAvisado){ try{ showToast('⚠ Permiso de GPS denegado: la factura se enviará sin ubicación'); }catch(e){} gpsAvisado=true; }
+      else if(err && err.code===3 && !gpsAvisado){ try{ showToast('⚠ Sin señal GPS: la factura se enviará sin ubicación'); }catch(e){} gpsAvisado=true; }
+      // ultimaPos conserva su último valor conocido (no se fuerza a null).
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
   }
+  // Recupera la última posición conocida (offline-friendly) sin pisar una más nueva.
+  try{ var _lp=JSON.parse(localStorage.getItem('cp_ultimaPos')||'null'); if(_lp&&_lp.lat&&!ultimaPos) ultimaPos=_lp; }catch(e){}
 }
 // Sheet firma
 function openSheet(id){
-  if(window.CP){
+  selEntregaRemota = null;
+  var sub = document.getElementById('firmaSub');
+  // 1) Prioriza la entrega REAL cargada desde planta (Supabase), si la hay.
+  var er = id ? entregasPlanta.filter(function(x){return String(x.id)===String(id);})[0]
+              : entregasPlanta.filter(function(x){return x.estado!=='entregada';})[0];
+  if(er){
+    selEntregaRemota = er; selEntregaId = er.id;
+    if(sub) sub.textContent = (er.cliente||er.codigo_cliente||'Entrega') + ' · ' + ((er.direccion||'')+(er.comuna?' · '+er.comuna:''));
+    var ff=document.getElementById('firmaFactura'); if(ff && !ff.value && er.folio) ff.value=er.folio;
+  } else if(window.CP){
+    // 2) Fallback: almacén local (comportamiento previo, conservado).
     var es = CP.entregas();
     var e = id ? es.filter(function(x){return x.id===id;})[0] : es.filter(function(x){return x.estado==='pendiente';})[0];
     selEntregaId = e ? e.id : null;
-    var sub = document.getElementById('firmaSub');
-    if(sub) sub.textContent = e ? (e.cliente + ' · ' + (e.direccion||'')) : 'No hay entregas pendientes';
-  }
+    if(sub) sub.textContent = e ? (e.cliente + ' · ' + (e.direccion||'')) : 'Firma de recepción de la entrega';
+  } else { selEntregaId = null; if(sub) sub.textContent = 'Firma de recepción de la entrega'; }
   document.getElementById('sheetBg').classList.add('open');document.getElementById('sheet').classList.add('open');setTimeout(initSig,300)
+}
+// Cierra la entrega REAL en planta (PATCH estado=entregada, con cola offline si no hay señal)
+function cerrarEntregaRemota(receptor, tipo){
+  if(!selEntregaRemota) return;
+  var id = selEntregaRemota.id; selEntregaRemota = null;
+  if(window.CPSupabase && CPSupabase.cerrarEntrega){
+    try{ CPSupabase.cerrarEntrega(id, { receptor:receptor||'', firma_tipo:tipo||'DIGITAL' }); }catch(e){}
+  }
+  setTimeout(cargarMisEntregas, 900); // refresca la barra de progreso de la ruta
 }
 function closeSheet(){document.getElementById('sheetBg').classList.remove('open');document.getElementById('sheet').classList.remove('open')}
 function setTab(t, el){ var tabs=document.querySelectorAll('.tabbar .tab'); for(var i=0;i<tabs.length;i++) tabs[i].classList.remove('active'); if(el) el.classList.add('active');
-  if(t==='inicio'){ try{closeSheet();}catch(e){} window.scrollTo({top:0,behavior:'smooth'}); }
+  if(t==='inicio'){ try{closeSheet();}catch(e){} var hb=document.getElementById('homeBody'); if(hb){ if(hb.scrollTo){ hb.scrollTo({top:0,behavior:'smooth'}); } else { hb.scrollTop=0; } } else { window.scrollTo({top:0,behavior:'smooth'}); } }
   else if(t==='entregas'){ var c=document.getElementById('cardEntregas'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   else if(t==='rendir'){ var c=document.getElementById('cardEfectivo'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   else if(t==='perfil'){ openPerfil(); } }
@@ -443,7 +496,7 @@ function cerrarSesion(){ try{ if(window.CPAuth&&CPAuth.logout){ CPAuth.logout();
 function openUbic(){ var box=document.getElementById('ubicInfo'), lnk=document.getElementById('ubicMap'); document.getElementById('ubicBg').classList.add('open'); document.getElementById('ubicSheet').classList.add('open');
   function pinta(lat,lng,acc){ box.innerHTML='<div style="font-family:var(--mono);font-size:14px;font-weight:600">\ud83d\udccd '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5)+'</div>'+(acc?'<div style="color:var(--ink-dim);font-size:12px;margin-top:5px;font-family:var(--mono)">precisi\u00f3n ~'+Math.round(acc)+' m</div>':''); lnk.href='https://www.google.com/maps?q='+lat+','+lng; lnk.style.display='block'; }
   if(typeof ultimaPos!=='undefined' && ultimaPos && ultimaPos.lat){ pinta(ultimaPos.lat, ultimaPos.lng, ultimaPos.acc); }
-  else if(navigator.geolocation){ box.textContent='Obteniendo ubicaci\u00f3n\u2026'; lnk.style.display='none'; navigator.geolocation.getCurrentPosition(function(p){ try{ultimaPos={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};}catch(e){} pinta(p.coords.latitude,p.coords.longitude,p.coords.accuracy); }, function(){ box.textContent='No se pudo obtener la ubicaci\u00f3n. Revisa los permisos.'; }, {enableHighAccuracy:true,timeout:9000}); }
+  else if(navigator.geolocation){ box.textContent='Obteniendo ubicaci\u00f3n\u2026'; lnk.style.display='none'; navigator.geolocation.getCurrentPosition(function(p){ try{ultimaPos={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};}catch(e){} pinta(p.coords.latitude,p.coords.longitude,p.coords.accuracy); }, function(err){ var msg='No se pudo obtener la ubicaci\u00f3n. Revisa los permisos.'; if(err){ if(err.code===1) msg='Permiso de ubicaci\u00f3n denegado. Act\u00edvalo en los ajustes del tel\u00e9fono.'; else if(err.code===2) msg='Ubicaci\u00f3n no disponible (sin se\u00f1al GPS en esta zona).'; else if(err.code===3) msg='El GPS est\u00e1 tardando. Mu\u00e9vete a una zona despejada e intenta de nuevo.'; } box.textContent=msg; }, {enableHighAccuracy:true,timeout:9000}); }
   else { box.textContent='Este dispositivo no soporta GPS.'; } }
 function closeUbic(){ document.getElementById('ubicBg').classList.remove('open'); document.getElementById('ubicSheet').classList.remove('open'); }
 var ctx,drawing=false,hasSig=false;
@@ -485,15 +538,31 @@ function generarActa(e, receptor, factura, firmaData, tipoFirma){
 }
 function confirmSig(){
   if(!hasSig){alert('Por favor firma primero');return}
+  var receptor = (document.getElementById('firmaReceptor').value||'').trim();
+  if(!receptor){ alert('Ingresa el nombre de quien recibe'); document.getElementById('firmaReceptor').focus(); return; }
   var firmaData = document.getElementById('sigPad').toDataURL('image/png');
-  var receptor = (document.getElementById('firmaReceptor').value||'').trim() || 'Cliente';
   var factura = (document.getElementById('firmaFactura').value||'').trim();
   closeSheet();
   if(window.CP){ var e=CP.firmarEntrega(selEntregaId, 'DIGITAL', firmaData, receptor, factura); renderHome(); generarActa(e, receptor, factura, firmaData, 'DIGITAL'); }
+  cerrarEntregaRemota(receptor, 'DIGITAL');
   document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value='';
-  showToast('✓ Recepción conforme · acta PDF enviada a planta');
+  showToast('✓ Recepción conforme · entrega registrada');
 }
-function showToast(msg){var t=document.getElementById('toast');t.textContent=msg||'✓ Entrega registrada con firma';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+var toastQueue=[], toastBusy=false;
+function showToast(msg){
+  msg=msg||'✓ Entrega registrada con firma';
+  if(toastQueue.length && toastQueue[toastQueue.length-1]===msg) return; // dedupe consecutivo
+  toastQueue.push(msg);
+  if(!toastBusy) processToastQueue();
+}
+function processToastQueue(){
+  var t=document.getElementById('toast');
+  if(!t || !toastQueue.length){ toastBusy=false; return; }
+  toastBusy=true;
+  t.textContent=toastQueue.shift();
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(processToastQueue,320); },2400);
+}
 // ── Escáner real: foto de la factura → PDF → llega directo a planta ──
 var ultimoPdf = null;
 function openScan(){
@@ -548,9 +617,14 @@ function detenerVivo(){
   try{ if(liveReader){ liveReader.reset(); liveReader=null; } }catch(e){}
   var v=document.getElementById('scanVideo'); if(v) v.style.display='none';
 }
+// Estado de carga con puntos pulsantes (la pantalla no parece congelada mientras lee)
+function setScanCargando(titulo,desc){
+  var t=document.getElementById('scanTitle'), d=document.getElementById('scanDesc');
+  if(t) t.textContent=titulo;
+  if(d) d.innerHTML=desc+'<span class="cp-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+}
 function procesarFoto(file){
-  document.getElementById('scanTitle').textContent='Procesando…';
-  document.getElementById('scanDesc').textContent='Detectando documento y enderezando…';
+  setScanCargando('Procesando…','Detectando documento y enderezando…');
   var reader=new FileReader();
   reader.onload=function(e){
     var img=new Image();
@@ -599,8 +673,7 @@ function procesarFoto(file){
           };
         }
         function leerOffline(){
-          document.getElementById('scanTitle').textContent='Sin internet · OCR local…';
-          document.getElementById('scanDesc').textContent='Leyendo en el dispositivo (verifica los datos)';
+          setScanCargando('Sin internet · OCR local…','Leyendo en el dispositivo (verifica los datos)');
           // foto ORIGINAL (no el recorte): el encabezado con RUT/folio debe estar completo
           var p = (window.CPOcrOffline && CPOcrOffline.disponible()) ? CPOcrOffline.leer(img) : Promise.resolve(null);
           p.then(function(ocr){
@@ -609,8 +682,7 @@ function procesarFoto(file){
           });
         }
         if(navigator.onLine === false){ leerOffline(); return; }
-        document.getElementById('scanTitle').textContent='Leyendo con IA…';
-        document.getElementById('scanDesc').textContent='Extrayendo los datos de la factura';
+        setScanCargando('Leyendo con IA…','Extrayendo los datos de la factura');
         var aiP = (window.CPSupabase && CPSupabase.extraerFactura) ? CPSupabase.extraerFactura(jpegFull.split(',')[1]) : Promise.resolve(null);
         aiP.then(function(ai){
           if(ai && (ai.folio || ai.valorConIva || ai.rutEmisor)){
@@ -703,9 +775,12 @@ function selPago(el){
 }
 // Base de la API: localStorage cp_api, o el mismo origen donde corre la PWA
 function cpApi(){ var a=localStorage.getItem('cp_api'); if(a) return a.replace(/\/$/,''); return location.origin + '/api'; }
+var _enviando = false;
 function enviarAPlanta(){
+  if(_enviando) return;                                  // cerrojo de reentrancia (evita doble envío)
   if(!docPendiente){ showToast('Primero escanea la factura'); return; }
   if(!pagoSel){ showToast('Selecciona la forma de pago'); return; }
+  _enviando = true;
   var firmante=(document.getElementById('pagoFirmante').value||'').trim();
   docPendiente.formaPago = pagoSel;
   docPendiente.firmante = firmante;
@@ -713,21 +788,25 @@ function enviarAPlanta(){
   docPendiente.repartidor = _p.nombre || '';
   docPendiente.patente = _p.patente || '';
   docPendiente.gps = (typeof ultimaPos !== 'undefined' && ultimaPos) ? ultimaPos : null;
+  if(!docPendiente.clientReqId) docPendiente.clientReqId = (new Date().getTime()+'-'+Math.random().toString(36).slice(2)); // idempotencia
   // 1) guarda copia local (para exportar el día) 2) sube a planta (Supabase)
   if(window.CP) CP.addDocumento(Object.assign({}, docPendiente));
-  var btn=document.getElementById('btnEnviar'); btn.disabled=true; btn.textContent='Enviando…';
+  var btn=document.getElementById('btnEnviar'); btn.disabled=true; btn.classList.add('loading'); btn.textContent='Enviando…';
   var envio = window.CPSupabase
     ? CPSupabase.insertDocSeguro(docPendiente)
     : fetch(cpApi()+'/documentos', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(docPendiente) }).then(function(r){ if(!r.ok) throw 0; return r.json(); });
   envio
     .then(function(res){
-      if(res && res._encolado) cerrarTrasEnvio('✓ Guardada · '+res.pendientes+' por sincronizar (sin señal)');
-      else cerrarTrasEnvio('✓ Factura enviada a planta · '+pagoSel);
+      if(res && res._encolado){
+        if(res._persistError){ cerrarTrasEnvio('⚠ Sin espacio para guardar. Exporta la planilla del día y libera espacio.'); }
+        else { var base='✓ Guardada · '+res.pendientes+' por sincronizar'; cerrarTrasEnvio(res.permanente ? (base+' (⚠ revisar datos)') : (base+' (sin señal)')); }
+      } else cerrarTrasEnvio('✓ Factura enviada a planta · '+pagoSel);
     })
-    .catch(function(){ cerrarTrasEnvio('✓ Guardada local · se sincronizará con planta'); });
+    .catch(function(){ cerrarTrasEnvio('✓ Guardada local · se sincronizará con planta'); })
+    .then(function(){ _enviando = false; });               // libera el cerrojo siempre
 }
 function cerrarTrasEnvio(msg){
-  var btn=document.getElementById('btnEnviar'); btn.disabled=false; btn.textContent='Enviar a planta ✓';
+  var btn=document.getElementById('btnEnviar'); btn.disabled=false; btn.classList.remove('loading'); btn.textContent='Enviar a planta ✓';
   document.getElementById('pagoBox').style.display='none';
   docPendiente=null; pagoSel=null;
   showToast(msg);
@@ -811,8 +890,11 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
   function upd(){
     var on = navigator.onLine !== false;
     var pend = (window.CPSupabase && CPSupabase.pendientes) ? CPSupabase.pendientes() : 0;
-    pill.classList.toggle('on', on); pill.classList.toggle('off', !on);
-    document.getElementById('netTxt').textContent = on ? (pend>0 ? 'EN LÍNEA · SINC '+pend : 'EN LÍNEA') : (pend>0 ? 'SIN SEÑAL · '+pend+' EN COLA' : 'SIN SEÑAL · OCR LOCAL');
+    var bloq = (window.CPSupabase && CPSupabase.bloqueados) ? CPSupabase.bloqueados().length : 0;
+    pill.classList.toggle('on', on && !bloq); pill.classList.toggle('off', !on && !bloq); pill.classList.toggle('alert', bloq>0);
+    var txt = on ? (pend>0 ? 'EN LÍNEA · SINC '+pend : 'EN LÍNEA') : (pend>0 ? 'SIN SEÑAL · '+pend+' EN COLA' : 'SIN SEÑAL · OCR LOCAL');
+    if(bloq>0) txt += ' · ⚠'+bloq+' REVISAR';
+    document.getElementById('netTxt').textContent = txt;
   }
   window.addEventListener('online',function(){ upd(); setTimeout(upd,4000); });
   window.addEventListener('offline',upd);
@@ -823,32 +905,45 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 (function(){ var ci=document.getElementById('camInput'); if(ci) ci.addEventListener('change', function(){ if(this.files&&this.files[0]) procesarFoto(this.files[0]); this.value=''; }); })();
 // ── Firma biométrica (flujo separado) ──
 function firmarBiometria(tipo){
+  var receptor=(document.getElementById('firmaReceptor').value||'').trim();
+  if(!receptor){ alert('Ingresa el nombre de quien recibe antes de verificar'); document.getElementById('firmaReceptor').focus(); return; }
   closeSheet();
   document.getElementById('bioTitle').textContent = tipo==='FACIAL' ? 'Verificación facial' : 'Verificación de huella';
   document.getElementById('bioSub').textContent = tipo==='FACIAL' ? 'Mira a la cámara y mantén el rostro centrado' : 'Coloca el dedo en el sensor';
-  document.getElementById('bioResult').textContent = 'Verificando...';
+  document.getElementById('bioResult').textContent = 'Verificando…';
   document.getElementById('bioBg').classList.add('open');
   document.getElementById('bioSheet').classList.add('open');
-  // Simula captura del SDK del dispositivo (scoreMatch + liveness) y verifica en backend
-  var scoreMatch = 0.88 + Math.random()*0.1;
-  var liveness = 0.8 + Math.random()*0.18;
-  var payload = { tenantId: CONFIG.TENANT, guiaId: CONFIG.GUIA, tipo: tipo, template: 'bio://'+Date.now(),
-                  scoreMatch: scoreMatch, livenessScore: liveness, dispositivoId: 'mobile-app', lat:-33.45, lng:-70.66 };
+  var pos = (typeof ultimaPos!=='undefined' && ultimaPos) ? ultimaPos : null;
+  var apiBase = CONFIG.API || '';
+  var bioBackend = /^https/i.test(apiBase) && !/localhost|127\.0\.0\.1/i.test(apiBase);
   setTimeout(function(){
+    if(!bioBackend){
+      // Sin verificador biométrico real disponible: NO se inventa un "match". Se registra la
+      // recepción con la evidencia REAL (nombre del receptor + ubicación GPS + marca de tiempo).
+      renderBio({ aprobada:true, sinBackend:true, lat:(pos?pos.lat:null), lng:(pos?pos.lng:null),
+        motivo:'Recepción registrada (identidad del receptor + ubicación + hora)' });
+      return;
+    }
+    var payload = { tenantId: CONFIG.TENANT, guiaId: CONFIG.GUIA, tipo: tipo, template: 'bio://'+Date.now(),
+                    dispositivoId: 'mobile-app', lat:(pos?pos.lat:null), lng:(pos?pos.lng:null) };
     apiPost('/biometria/verificar', payload)
       .then(function(res){ renderBio(res); })
-      .catch(function(){ renderBio({ aprobada:true, scoreMatch:scoreMatch, livenessScore:liveness, motivo:'Verificación exitosa (offline)' }); });
-  }, 2200);
+      .catch(function(){ renderBio({ aprobada:false, motivo:'No se pudo verificar la identidad (sin conexión con el verificador). Usa la firma digital.' }); });
+  }, 2000);
 }
 function renderBio(res){
   var el = document.getElementById('bioResult');
   document.getElementById('bioScan').style.display='none';
   if(res.aprobada){
-    el.innerHTML = '<span style="color:var(--green)">✓ '+res.motivo+'</span><br>match '+(res.scoreMatch*100).toFixed(0)+'% · liveness '+(res.livenessScore*100).toFixed(0)+'%';
-    setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'BIOMETRICA',null,rcp,fac); renderHome(); generarActa(e, rcp, fac, null, 'BIOMETRICA'); } showToast('✓ Recepción conforme (biométrica) · acta enviada'); }, 1400);
+    // Solo muestra porcentajes si vienen de un verificador REAL; si no, evidencia honesta (hora + GPS).
+    var detalle = (typeof res.scoreMatch==='number' && typeof res.livenessScore==='number')
+      ? ('match '+(res.scoreMatch*100).toFixed(0)+'% · liveness '+(res.livenessScore*100).toFixed(0)+'%')
+      : (new Date().toLocaleString('es-CL') + (res.lat!=null ? (' · GPS '+Number(res.lat).toFixed(4)+','+Number(res.lng).toFixed(4)) : ''));
+    el.innerHTML = '<span style="color:var(--green)">✓ '+res.motivo+'</span><br><span style="color:var(--ink-dim);font-size:11px">'+detalle+'</span>';
+    setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'BIOMETRICA',null,rcp,fac); renderHome(); generarActa(e, rcp, fac, null, 'BIOMETRICA'); } cerrarEntregaRemota(rcp,'BIOMETRICA'); document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value=''; showToast('✓ Recepción conforme · entrega registrada'); }, 1400);
   } else {
     el.innerHTML = '<span style="color:var(--red)">✗ '+res.motivo+'</span>';
-    setTimeout(closeBio, 2200);
+    setTimeout(closeBio, 2400);
   }
 }
 function closeBio(){
@@ -874,16 +969,17 @@ function enviarIncidencia(){
     factura: document.getElementById('incFactura').value,
     esperada: document.getElementById('incEsperada').value,
     entregada: document.getElementById('incEntregada').value,
+    precioUnit: document.getElementById('incPrecioUnit').value,
     tipo: incTipo, motivo: document.getElementById('incMotivo').value
   };
   closeInc();
   if(window.CP){
     var n = CP.addIncidencia(payload);
     var msg = '✓ Reportado a planta';
-    if(n.montoNota>0) msg += ' · nota de ' + (n.tipoNota==='COBRO'?'cobro':'crédito') + ' ' + CP.clp(n.montoNota);
+    if(n.montoNota>0){ msg += ' · nota de ' + (n.tipoNota==='COBRO'?'cobro':'crédito') + ' ' + CP.clp(n.montoNota); if(n.montoEstimado) msg += ' (estimado · planta confirma)'; }
     showToast(msg);
   } else showToast('✓ Incidencia guardada');
-  ['incProducto','incCliente','incGuia','incFactura','incEsperada','incEntregada','incMotivo'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['incProducto','incCliente','incGuia','incFactura','incEsperada','incEntregada','incPrecioUnit','incMotivo'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
 }
 
 // ───────── PWA: registro del service worker + prompt de instalación ─────────

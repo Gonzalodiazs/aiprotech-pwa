@@ -6,7 +6,7 @@
   var TKEY = 'cp_token', PKEY = 'cp_perfil';
   var LOGIN = './login.html';
 
-  function getToken() { return localStorage.getItem(TKEY); }
+  function getToken() { try { return localStorage.getItem(TKEY); } catch (e) { return null; } }
   function getPerfil() { try { return JSON.parse(localStorage.getItem(PKEY) || 'null'); } catch (e) { return null; } }
   function expMs(t) { try { return JSON.parse(atob(t.split('.')[1])).exp * 1000; } catch (e) { return 0; } }
   function valido() { var t = getToken(); return !!t && expMs(t) > Date.now(); }
@@ -28,7 +28,7 @@
     },
     token: getToken, perfil: getPerfil, valido: valido,
     requireSession: function () {
-      if (!valido()) { localStorage.removeItem(TKEY); location.replace(LOGIN); return false; }
+      if (!valido()) { try { localStorage.removeItem(TKEY); } catch (e) {} location.replace(LOGIN); return false; }
       return true;
     },
     logout: function () {
