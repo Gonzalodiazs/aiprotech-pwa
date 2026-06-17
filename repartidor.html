@@ -70,7 +70,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .deliv .info{flex:1}.deliv .info .n{font-size:13px;color:var(--ink)}.deliv .info .a{font-size:10.5px;color:var(--ink-faint);margin-top:1px}
 .deliv .st{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:6px}
 .st-ok{color:var(--green);background:rgba(66,185,133,.13)}.st-pend{color:var(--amber);background:rgba(227,168,63,.13)}
-.tabbar{position:absolute;bottom:0;left:0;right:0;min-height:72px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 14px calc(env(safe-area-inset-bottom)) 14px;z-index:50}
+.tabbar{position:absolute;bottom:0;left:0;right:0;min-height:72px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 14px calc(env(safe-area-inset-bottom)) 14px;z-index:75}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink-faint);font-size:9px;cursor:pointer;transition:.2s;flex:1;min-height:48px;padding:6px 4px}
 .tab svg{width:21px;height:21px}
 .tab.active{color:var(--blue)}
@@ -80,7 +80,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 /* sheet (firma) */
 .sheet-bg{position:absolute;inset:0;background:rgba(35,42,51,.38);z-index:60;opacity:0;pointer-events:none;transition:.3s}
 .sheet-bg.open{opacity:1;pointer-events:auto}
-.sheet{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-radius:26px 26px 0 0;border-top:1px solid var(--line-2);z-index:70;transform:translateY(100%);transition:transform .4s var(--ease);padding:22px}
+.sheet{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-radius:26px 26px 0 0;border-top:1px solid var(--line-2);z-index:70;transform:translateY(100%);transition:transform .4s var(--ease);padding:22px 22px calc(88px + env(safe-area-inset-bottom))}
 .sheet.open{transform:translateY(0)}
 .sheet .handle{width:40px;height:4px;background:var(--line-2);border-radius:3px;margin:0 auto 18px}
 .sheet h2{font-family:var(--display);font-size:20px;color:var(--ink);margin-bottom:4px}
@@ -94,7 +94,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#ffffff;font-weight:600;font-size:12.5px;padding:12px 22px;border-radius:12px;z-index:80;opacity:0;transition:.3s;box-shadow:0 8px 24px rgba(66,185,133,.4)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* scanner overlay */
-.scanner{position:absolute;inset:0;background:var(--bg);z-index:65;display:none;flex-direction:column}
+.scanner{position:absolute;inset:0;background:var(--bg);z-index:80;display:none;flex-direction:column}
 .scanner.open{display:flex}
 .scan-cam{flex:1;margin:18px;border-radius:18px;background:linear-gradient(160deg,#EEEAE0,#E3DDCE);border:1px solid var(--line);position:relative;overflow:hidden;display:grid;place-items:center}
 .scan-frame{width:75%;height:55%;border:2px solid var(--gold);border-radius:14px;position:relative}
@@ -481,8 +481,11 @@ function cerrarEntregaRemota(receptor, tipo){
   setTimeout(cargarMisEntregas, 900); // refresca la barra de progreso de la ruta
 }
 function closeSheet(){document.getElementById('sheetBg').classList.remove('open');document.getElementById('sheet').classList.remove('open')}
+// Cierra TODOS los overlays/sheets abiertos (evita que la barra inferior quede tapada/trabada)
+function closeAllSheets(){ var els=document.querySelectorAll('.sheet.open, .sheet-bg.open'); for(var i=0;i<els.length;i++) els[i].classList.remove('open'); }
 function setTab(t, el){ var tabs=document.querySelectorAll('.tabbar .tab'); for(var i=0;i<tabs.length;i++) tabs[i].classList.remove('active'); if(el) el.classList.add('active');
-  if(t==='inicio'){ try{closeSheet();}catch(e){} var hb=document.getElementById('homeBody'); if(hb){ if(hb.scrollTo){ hb.scrollTo({top:0,behavior:'smooth'}); } else { hb.scrollTop=0; } } else { window.scrollTo({top:0,behavior:'smooth'}); } }
+  closeAllSheets(); // cualquier toque en la barra inferior cierra overlays abiertos → nunca se traba
+  if(t==='inicio'){ var hb=document.getElementById('homeBody'); if(hb){ if(hb.scrollTo){ hb.scrollTo({top:0,behavior:'smooth'}); } else { hb.scrollTop=0; } } else { window.scrollTo({top:0,behavior:'smooth'}); } }
   else if(t==='entregas'){ var c=document.getElementById('cardEntregas'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   else if(t==='rendir'){ var c=document.getElementById('cardEfectivo'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   else if(t==='perfil'){ openPerfil(); } }
@@ -566,6 +569,7 @@ function processToastQueue(){
 // ── Escáner real: foto de la factura → PDF → llega directo a planta ──
 var ultimoPdf = null;
 function openScan(){
+  closeAllSheets();
   document.getElementById('scanner').classList.add('open');
   document.getElementById('scanResult').classList.remove('show');
   var mf=document.getElementById('scanManual'); if(mf) mf.style.display='none';
