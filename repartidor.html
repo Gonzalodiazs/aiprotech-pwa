@@ -155,6 +155,10 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .hero-scan.is-pressed{transform:scale(.98)}
 .mini-btn{background:rgba(46,102,201,.1);color:var(--blue);border:1px solid rgba(46,102,201,.28);border-radius:9px;padding:6px 12px;font-family:var(--sans);font-size:11px;font-weight:600;cursor:pointer}
 .sec-title{font-family:var(--display);font-size:15px;color:var(--ink);font-weight:600}
+/* Cerrar paneles: botón X arriba-derecha + arrastrar hacia abajo (swipe) */
+.sheet-x{position:absolute;top:13px;right:15px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-dim);font-size:15px;line-height:1;cursor:pointer;display:grid;place-items:center;z-index:3;padding:0;-webkit-appearance:none}
+.sheet-x:active{transform:scale(.9)}
+.sheet .handle{cursor:grab;width:46px;height:5px}
 </style>
 </head>
 <body>
@@ -1025,6 +1029,29 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
       });
     }
   }catch(e){}
+})();
+// ── Cerrar paneles inferiores: botón X (arriba-derecha) + arrastrar hacia abajo (swipe-down) ──
+(function(){
+  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic']];
+  sheets.forEach(function(s){
+    var sh=document.getElementById(s[0]); if(!sh) return;
+    function cerrar(){ try{ window[s[1]](); }catch(e){ sh.classList.remove('open'); } }
+    var x=document.createElement('button'); x.className='sheet-x'; x.type='button'; x.setAttribute('aria-label','Cerrar'); x.innerHTML='&#10005;';
+    x.addEventListener('click', cerrar); sh.appendChild(x);
+    var sy=0, dy=0, drag=false;
+    function down(e){
+      var t=e.target; if(t && t.closest && t.closest('.sheet-x,input,textarea,canvas,button,a')) return; // no arrastrar desde controles
+      var y=(e.touches?e.touches[0]:e).clientY, r=sh.getBoundingClientRect();
+      if(y-r.top>120) return;            // solo arranca el gesto desde la zona superior (handle/título)
+      sy=y; dy=0; drag=true; sh.style.transition='none';
+    }
+    function move(e){ if(!drag) return; var y=(e.touches?e.touches[0]:e).clientY; dy=Math.max(0,y-sy); sh.style.transform='translateY('+dy+'px)'; if(dy>4 && e.cancelable) e.preventDefault(); }
+    function upp(){ if(!drag) return; drag=false; sh.style.transition=''; var close=dy>90; sh.style.transform=''; if(close) cerrar(); }
+    sh.addEventListener('touchstart',down,{passive:true});
+    sh.addEventListener('touchmove',move,{passive:false});
+    sh.addEventListener('touchend',upp); sh.addEventListener('touchcancel',upp);
+    sh.addEventListener('mousedown',down); document.addEventListener('mousemove',move); document.addEventListener('mouseup',upp);
+  });
 })();
 // ── Firma biométrica (flujo separado) ──
 var _bioTimers = [];
