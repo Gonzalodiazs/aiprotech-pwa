@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ConciliaPro · App Repartidor</title>
+<title>RUFAI · App Repartidor</title>
 <link rel="manifest" href="./pwa/manifest.json">
 <meta name="theme-color" content="#F7F5F0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="ConciliaPro">
+<meta name="apple-mobile-web-app-title" content="RUFAI">
 <link rel="apple-touch-icon" href="./pwa/icon-192.png">
 <script src="./store.js"></script>
 <script src="./vendor/cp-auth.js"></script>
@@ -70,6 +70,8 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .deliv .info{flex:1}.deliv .info .n{font-size:13px;color:var(--ink)}.deliv .info .a{font-size:10.5px;color:var(--ink-faint);margin-top:1px}
 .deliv .st{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:6px}
 .st-ok{color:var(--green);background:rgba(66,185,133,.13)}.st-pend{color:var(--amber);background:rgba(227,168,63,.13)}
+.navbtn{font-family:var(--sans);font-size:11px;font-weight:700;color:#1E4FA8;background:rgba(46,102,201,.10);border:1px solid rgba(46,102,201,.28);border-radius:8px;padding:6px 10px;text-decoration:none;white-space:nowrap;flex-shrink:0;min-height:34px;display:inline-flex;align-items:center}
+.navbtn:active{transform:scale(.96)}
 .tabbar{position:absolute;bottom:0;left:0;right:0;min-height:72px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 14px calc(env(safe-area-inset-bottom)) 14px;z-index:75}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink-faint);font-size:9px;cursor:pointer;transition:.2s;flex:1;min-height:48px;padding:6px 4px}
 .tab svg{width:21px;height:21px}
@@ -91,7 +93,9 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 .btn{flex:1;padding:14px;border-radius:13px;border:none;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
 .btn-primary{background:var(--green);color:#ffffff}.btn-primary.is-pressed{transform:scale(.97)}
 .btn-ghost{background:var(--panel-2);color:var(--ink-dim);border:1px solid var(--line)}
-.toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#ffffff;font-weight:600;font-size:12.5px;padding:12px 22px;border-radius:12px;z-index:80;opacity:0;pointer-events:none;transition:.3s;box-shadow:0 8px 24px rgba(66,185,133,.4)}
+.toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#ffffff;font-weight:600;font-size:12.5px;padding:12px 22px;border-radius:12px;z-index:80;opacity:0;pointer-events:none;transition:.3s;box-shadow:0 8px 24px rgba(66,185,133,.4);max-width:90%;text-align:center;line-height:1.35}
+.toast.t-warn{background:var(--amber);box-shadow:0 8px 24px rgba(227,168,63,.4)}
+.toast.t-err{background:var(--red);box-shadow:0 8px 24px rgba(200,64,46,.45)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* scanner overlay */
 .scanner{position:absolute;inset:0;background:var(--bg);z-index:80;display:none;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -171,6 +175,45 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
     <span class="route-chip" id="routeChip"><span class="dot"></span>EN RUTA</span>
   </div>
   <div class="body" id="homeBody">
+    <style>
+      .midia{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px 16px;margin-bottom:14px}
+      .md-status{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:700;color:var(--ink);padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--line-2);margin-bottom:12px;line-height:1.3}
+      .md-status .md-ic{font-size:15px;flex-shrink:0}
+      .md-status.md-ok{background:rgba(30,127,84,.10);border-color:rgba(30,127,84,.32);color:#0F5E3C}
+      .md-status.md-warn{background:rgba(200,130,26,.10);border-color:rgba(200,130,26,.34);color:#7A5210}
+      .md-status.md-err{background:rgba(200,64,46,.10);border-color:rgba(200,64,46,.34);color:#9E2417}
+      .md-steps{display:flex;flex-direction:column;gap:8px}
+      .md-step{display:flex;align-items:center;gap:11px;padding:9px 11px;background:var(--bg);border:1px solid var(--line-2);border-radius:12px}
+      .md-s-ic{font-size:18px;width:24px;text-align:center;flex-shrink:0}
+      .md-s-info{flex:1;min-width:0}
+      .md-s-l{font-size:9.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+      .md-s-v{font-size:13px;font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .md-s-chk{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:transparent;flex-shrink:0}
+      .md-s-chk.on{background:var(--green);border-color:var(--green);color:#fff}
+      .md-help-toggle{margin-top:11px;background:none;border:none;color:var(--blue);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;padding:5px 0;min-height:32px}
+      .md-help{margin-top:4px;background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px 13px}
+      .md-flow{display:flex;flex-direction:column;gap:8px}
+      .md-f{font-size:12px;color:var(--ink-faint);line-height:1.4}
+      .md-f b{color:var(--blue);margin-right:5px}
+    </style>
+    <div class="midia" id="cardMiDia" style="animation-delay:.02s">
+      <div class="sec-title" style="margin-bottom:10px">Mi día</div>
+      <div class="md-status" id="mdStatus"><span class="md-ic" id="mdIc">●</span><span id="mdHeadline">Cargando tu día…</span></div>
+      <div class="md-steps">
+        <div class="md-step"><div class="md-s-ic">🚚</div><div class="md-s-info"><div class="md-s-l">Ruta · entregas</div><div class="md-s-v" id="mdRuta">—</div></div><div class="md-s-chk" id="mdChkRuta"></div></div>
+        <div class="md-step"><div class="md-s-ic">📄</div><div class="md-s-info"><div class="md-s-l">Facturas escaneadas</div><div class="md-s-v" id="mdFact">0 hoy</div></div><div class="md-s-chk" id="mdChkFact"></div></div>
+        <div class="md-step"><div class="md-s-ic">💰</div><div class="md-s-info"><div class="md-s-l">Cuadre · respaldos</div><div class="md-s-v" id="mdCuadre">—</div></div><div class="md-s-chk" id="mdChkCuadre"></div></div>
+      </div>
+      <button class="md-help-toggle" id="mdHelpToggle" onclick="toggleMdHelp()">¿Cómo cuadrar mi día? ▾</button>
+      <div class="md-help" id="mdHelp" style="display:none">
+        <div class="md-flow">
+          <div class="md-f"><b>1</b> Escanea la factura al entregar</div>
+          <div class="md-f"><b>2</b> Elige cómo te pagaron (efectivo · transferencia · mixto)</div>
+          <div class="md-f"><b>3</b> Si NO es efectivo, adjunta el comprobante (ahora o después en el día)</div>
+          <div class="md-f"><b>4</b> Vuelve a planta con el efectivo en mano + todos los comprobantes ✓</div>
+        </div>
+      </div>
+    </div>
     <div class="cockpit" id="cardEfectivo" style="animation-delay:.04s">
       <div class="ck-top">
         <div>
@@ -201,6 +244,44 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
         <button onclick="cargarMisEntregas()" class="mini-btn">↻ Actualizar</button>
       </div>
       <div id="rEntregas"></div>
+    </div>
+    <style>
+      .cq-alerta{display:flex;align-items:center;gap:8px;background:rgba(200,64,46,.10);border:1px solid rgba(200,64,46,.30);color:#9E2417;border-radius:11px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.35;font-weight:600}
+      .cq-alerta svg{flex-shrink:0}
+      .cq-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+      .cq-k{background:var(--bg);border:1px solid var(--line-2);border-radius:11px;padding:10px 11px}
+      .cq-k-pend{grid-column:1 / -1;border-color:rgba(200,130,26,.35);background:rgba(200,130,26,.07)}
+      .cq-kl{font-size:9.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase}
+      .cq-kv{font-size:18px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+      .cq-k-pend .cq-kv{color:#7A5210}
+      .cq-n{font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);margin:8px 0 4px}
+      .cq-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+      .cq-row:last-child{border-bottom:none}
+      .cq-main{flex:1;min-width:0}
+      .cq-fol{font-family:var(--mono);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .cq-meta{font-size:11px;color:var(--ink-faint);margin-top:1px}
+      .cq-ok{font-size:11px;font-weight:600;color:var(--green);white-space:nowrap}
+      .cq-warn{display:inline-block;font-size:9px;font-weight:700;color:#9E2417;background:rgba(200,64,46,.12);border-radius:5px;padding:1px 5px;margin-right:3px}
+      .cq-att{background:rgba(200,130,26,.12);color:#7A5210;border:1px solid rgba(200,130,26,.35);border-radius:9px;padding:7px 11px;font-family:var(--sans);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:36px}
+      .cq-att:active{transform:scale(.97)}
+      .tab .badge{position:absolute;top:2px;right:50%;transform:translateX(14px);background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;line-height:1}
+    </style>
+    <div class="card" id="cardCuadre" style="animation-delay:.28s">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="sec-title">Cuadre del día</div>
+        <button onclick="exportarExcel()" class="mini-btn">⬇ Excel</button>
+      </div>
+      <div id="cqAlerta" class="cq-alerta" style="display:none">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10.3 3.9a2 2 0 013.4 0l8 13.4a2 2 0 01-1.7 3H4a2 2 0 01-1.7-3z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span id="cqAlTxt">—</span>
+      </div>
+      <div class="cq-kpis">
+        <div class="cq-k"><div class="cq-kl">💵 Efectivo a rendir</div><div class="cq-kv" id="cqEfectivo">$0</div></div>
+        <div class="cq-k"><div class="cq-kl">🏦 Con comprobante</div><div class="cq-kv" id="cqElec">$0</div></div>
+        <div class="cq-k cq-k-pend"><div class="cq-kl">⚠ Falta comprobante</div><div class="cq-kv" id="cqPend">$0</div></div>
+      </div>
+      <div class="cq-n" id="cqN">0 facturas</div>
+      <div id="cuadreBody"></div>
     </div>
   </div>
   <!-- Scanner -->
@@ -243,7 +324,7 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
         <button class="pago" data-pago="TRANSFERENCIA" onclick="selPago(this)">🏦 Transferencia</button>
         <button class="pago" data-pago="MIXTO" onclick="selPago(this)">🔀 Mixto</button>
       </div>
-      <!-- Mixto: ¿con qué se pagó? (multi-selección) -->
+      <!-- Mixto: ¿con qué se pagó? (multi-selección) + monto por método -->
       <div id="mixtoBox" style="display:none;margin-bottom:10px">
         <div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.05em;margin-bottom:7px">¿CON QUÉ SE PAGÓ? · marca los que apliquen</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -253,6 +334,9 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
           <button class="pago-sub" data-mc="CHEQUE" onclick="toggleMixtoComp(this)">Cheque</button>
           <button class="pago-sub" data-mc="TRANSFERENCIA" onclick="toggleMixtoComp(this)">Transferencia</button>
         </div>
+        <!-- Monto pagado con cada método (se genera según lo que marques) -->
+        <div id="mixtoMontos" style="margin-top:9px"></div>
+        <div id="mixtoResumen" style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);margin-top:6px"></div>
       </div>
       <!-- Crédito: clasificación contable chilena (CxP / DxP / Letra / P.A.) -->
       <div id="creditoBox" style="display:none;margin-bottom:10px">
@@ -264,16 +348,43 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
           <button class="pago-sub" data-ct="PA" onclick="selCreditoTipo(this)">P.A. · Pago a plazo</button>
         </div>
       </div>
+      <!-- Comprobante de pago: foto del respaldo (transferencia / no-efectivo) + lectura IA -->
+      <div id="cpagoBox" style="display:none;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.05em;margin-bottom:7px">COMPROBANTE DE PAGO · foto del respaldo (opcional)</div>
+        <div id="cpagoEmpty">
+          <button type="button" class="btn btn-ghost" style="width:100%;min-height:46px;font-size:12.5px" onclick="tomarComprobantePago()">📷 Adjuntar comprobante de pago</button>
+        </div>
+        <div id="cpagoData" style="display:none;background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:11px">
+          <div style="display:flex;gap:11px;align-items:flex-start">
+            <img id="cpagoThumb" alt="comprobante de pago" style="width:54px;height:68px;object-fit:cover;border-radius:9px;border:1px solid var(--line-2);background:var(--panel);flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div id="cpagoEstado" style="font-size:10.5px;color:var(--amber);font-family:var(--mono);margin-bottom:7px">Leyendo…</div>
+              <div class="mgrid" style="margin-bottom:7px">
+                <input id="cpMonto" inputmode="numeric" placeholder="Monto pagado $" class="minp">
+                <input id="cpFecha" placeholder="Fecha AAAA-MM-DD" class="minp">
+              </div>
+              <input id="cpRef" placeholder="N° operación / referencia" class="minp" style="width:100%;margin-bottom:7px;box-sizing:border-box">
+              <input id="cpRutOrigen" placeholder="RUT de quien paga (opcional)" class="minp" style="width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <button type="button" class="mini-btn" style="margin-top:9px;background:rgba(200,64,46,.08);color:var(--red);border-color:rgba(200,64,46,.28)" onclick="quitarComprobantePago()">✕ Quitar comprobante</button>
+        </div>
+      </div>
+      <!-- Validación de recepción: la factura física trae timbre del proveedor + firma del cliente -->
+      <label id="visadaTog" onclick="toggleVisada()" style="display:flex;align-items:center;gap:9px;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:11px;margin-bottom:9px;cursor:pointer;font-size:12.5px;min-height:44px;box-sizing:border-box">
+        <span id="vtBox" style="width:22px;height:22px;border-radius:6px;border:2px solid var(--line-2);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:transparent;flex-shrink:0">✓</span>
+        <span>Factura <b>visada</b> · timbre + firma del cliente <span id="vtIA" style="font-family:var(--mono);font-size:9px;color:var(--ink-faint)"></span></span>
+      </label>
       <input id="pagoFirmante" placeholder="Nombre de quien recibe / firma" style="width:100%;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:12px;min-height:44px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;box-sizing:border-box">
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-ghost" style="flex:1;min-height:48px;font-size:12.5px" onclick="corregirDatos()">✎ Corregir datos</button>
         <button class="btn btn-primary" style="flex:2;min-height:48px" onclick="enviarAPlanta()" id="btnEnviar">Enviar a planta ✓</button>
       </div>
     </div>
-    <div class="scan-info"><div class="t" id="scanTitle">Apunta al timbre electrónico</div><div class="d" id="scanDesc">Encuadra el código PDF417 del documento</div></div>
+    <div class="scan-info"><div class="t" id="scanTitle">Escanea tu factura</div><div class="d" id="scanDesc">Toca “Tomar foto” y captura la factura completa</div></div>
     <div style="padding:0 22px 10px;display:flex;gap:10px">
-      <button class="btn btn-primary" style="flex:1" onclick="escanearTimbreVivo()" id="btnVivo">📡 Escanear timbre</button>
-      <button class="btn btn-ghost" style="flex:1" onclick="tomarFoto()" id="btnFoto">📷 Solo foto</button>
+      <button class="btn btn-primary" style="flex:2" onclick="tomarFoto()" id="btnFoto">📷 Tomar foto de la factura</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="escanearTimbreVivo()" id="btnVivo" title="Leer el código de barras del timbre (si la factura lo tiene nítido)">📡 Timbre</button>
     </div>
     <div style="padding:0 22px 14px">
       <button class="btn btn-ghost" style="width:100%;font-size:12.5px" onclick="descargarUltimoPdf()" id="btnVerPdf" disabled>Ver PDF guardado</button>
@@ -282,6 +393,8 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
       <button class="btn btn-ghost" style="width:100%;font-size:12.5px" onclick="exportarExcel()">⤓ Exportar planilla Excel (documentos del día)</button>
     </div>
     <input type="file" accept="image/*" capture="environment" id="camInput" style="display:none">
+    <input type="file" accept="image/*" capture="environment" id="camPago" style="display:none">
+    <input type="file" accept="image/*" capture="environment" id="camPagoAtt" style="display:none" onchange="if(this.files&&this.files[0]){procesarCpAttach(this.files[0]);} this.value='';">
   </div>
   <!-- Sheet firma -->
   <div class="sheet-bg" id="sheetBg" onclick="closeSheet()"></div>
@@ -400,18 +513,46 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
       <a class="btn btn-primary" id="ubicMap" href="#" target="_blank" style="display:none;text-decoration:none;text-align:center">Ver en mapa</a>
     </div>
   </div>
+  <!-- Sheet: adjuntar comprobante de pago DESPUÉS (cuadre del día) -->
+  <div class="sheet-bg" id="cpAttBg" onclick="closeCpAttach()"></div>
+  <div class="sheet" id="cpAttSheet">
+    <div class="handle"></div>
+    <h2>Adjuntar comprobante</h2>
+    <div class="sub" id="cpAttInfo">Respaldo de pago de la factura</div>
+    <div id="cpAttEmpty">
+      <button class="btn btn-ghost" style="width:100%;min-height:48px;font-size:12.5px" onclick="document.getElementById('camPagoAtt').click()">📷 Tomar foto del comprobante</button>
+    </div>
+    <div id="cpAttData" style="display:none;background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:11px;margin-top:4px">
+      <div style="display:flex;gap:11px;align-items:flex-start">
+        <img id="cpAttThumb" alt="comprobante de pago" style="width:54px;height:68px;object-fit:cover;border-radius:9px;border:1px solid var(--line-2);background:var(--panel);flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div id="cpAttEstado" style="font-size:10.5px;color:var(--amber);font-family:var(--mono);margin-bottom:7px">Leyendo…</div>
+          <div class="mgrid" style="margin-bottom:7px">
+            <input id="cpAttMonto" inputmode="numeric" placeholder="Monto pagado $" class="minp">
+            <input id="cpAttFecha" placeholder="Fecha AAAA-MM-DD" class="minp">
+          </div>
+          <input id="cpAttRef" placeholder="N° operación / referencia" class="minp" style="width:100%;margin-bottom:7px;box-sizing:border-box">
+          <input id="cpAttRut" placeholder="RUT de quien paga (opcional)" class="minp" style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-ghost" onclick="closeCpAttach()">Cancelar</button>
+      <button class="btn btn-primary" id="btnCpAtt" onclick="guardarCpAttach()">Guardar comprobante ✓</button>
+    </div>
+  </div>
   <div class="toast" id="toast">✓ Entrega registrada con firma</div>
   <!-- Tabbar -->
   <div class="tabbar">
     <div class="tab active" onclick="setTab('inicio',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Inicio</div>
     <div class="tab" onclick="setTab('entregas',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Entregas</div>
     <div class="tab scan" onclick="openScan()"><div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10"/></svg></div>Escanear</div>
-    <div class="tab" onclick="setTab('rendir',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Rendir</div>
+    <div class="tab" style="position:relative" onclick="setTab('rendir',this)"><span class="badge" id="rendirBadge"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Rendir</div>
     <div class="tab" onclick="setTab('perfil',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Perfil</div>
   </div>
 </div></div>
 <script>
-// ───────── Conexión con backend ConciliaPro ─────────
+// ───────── Conexión con backend RUFAI ─────────
 // Configura aquí tu API. Si no responde, la app cae a modo demo.
 var CONFIG = {
   API: (localStorage.getItem('cp_api') || (location.origin + '/api')).replace(/\/$/,''),
@@ -434,11 +575,12 @@ window.addEventListener('load',function(){ renderHome(); startGps(); });
 if(window.CP) CP.on(renderHome);
 
 // ───────── Render del inicio desde el almacén local ─────────
-var selEntregaId = null, selEntregaRemota = null, entregasPlanta = [];
+var selEntregaId = null, selEntregaRemota = null, entregasPlanta = [], ultimoReceptor = '';
 function renderHome(){
   if(!window.CP) return;
   var k = CP.kpiRepartidor();
-  document.getElementById('rEfectivo').textContent = CP.clp(k.efectivo);
+  // "Efectivo a rendir" = la plata en mano (facturas pagadas en efectivo, incl. parte efectivo del mixto)
+  try{ document.getElementById('rEfectivo').textContent = CP.clp(CP.cuadreDia().efectivo); }catch(e){ document.getElementById('rEfectivo').textContent = CP.clp(k.efectivo); }
   document.getElementById('rSub').textContent = k.firmadas + ' de ' + k.total + ' entregas';
   document.getElementById('rProg').style.width = k.progreso + '%';
   var _pct=document.getElementById('rPct'); if(_pct) _pct.textContent = k.progreso + '%';
@@ -446,7 +588,134 @@ function renderHome(){
   var _pf = (function(){ try{ return JSON.parse(localStorage.getItem('cp_perfil')||'{}'); }catch(e){ return {}; } })();
   if(rc) rc.innerHTML = '<span class="dot"></span>' + (_pf.patente ? (_pf.patente + ' · ') : '') + 'EN RUTA';
   cargarMisEntregas(); // La ruta la carga PLANTA (tabla `entregas` en Supabase); el chofer solo la ve.
+  try{ renderCuadre(); }catch(e){} try{ renderMiDia(); }catch(e){} // cuadre + panel "Mi día" (proceso del repartidor)
 }
+// Escapa texto que viene de la tabla `entregas` (la carga PLANTA) antes de meterlo por innerHTML → evita XSS almacenado.
+function escEnt(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+// URL de navegación (Google Maps) al cliente: coords si las hay, si no la dirección textual (encodeURIComponent).
+function navUrl(e){
+  if(e && e.lat && e.lng) return 'https://www.google.com/maps/dir/?api=1&destination='+e.lat+','+e.lng;
+  var q=[(e&&e.direccion)||'',(e&&e.comuna)||'','Chile'].filter(Boolean).join(', ').trim();
+  return q ? ('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q)) : '';
+}
+// ───────── Cuadre del día: revisar facturas + adjuntar comprobantes después ─────────
+function renderCuadre(){
+  if(!window.CP || !CP.cuadreDia) return;
+  var c=CP.cuadreDia();
+  var setT=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  setT('cqEfectivo', CP.clp(c.efectivo)); setT('cqElec', CP.clp(c.electronicoOk)); setT('cqPend', CP.clp(c.pendienteMonto));
+  setT('cqN', c.n+' factura'+(c.n===1?'':'s')+' hoy · facturado '+CP.clp(c.totalFacturado)+((c.aCobrarDespues>0)?(' · 🕓 '+CP.clp(c.aCobrarDespues)+' a cobrar después (crédito)'):''));
+  var arr=c.pendientesArrastre||[];
+  var pendTot=c.pendientes.length+arr.length;
+  var al=document.getElementById('cqAlerta'), txt=document.getElementById('cqAlTxt');
+  if(al){ if(pendTot){ al.style.display='flex'; if(txt) txt.textContent=pendTot+' factura'+(pendTot===1?'':'s')+' sin comprobante · '+CP.clp((c.pendienteMonto||0)+(c.arrastreMonto||0))+' por respaldar antes de volver a planta'+(arr.length?' (incl. días anteriores)':''); } else al.style.display='none'; }
+  var bdg=document.getElementById('rendirBadge'); if(bdg){ if(pendTot){ bdg.style.display='flex'; bdg.textContent=pendTot; } else bdg.style.display='none'; }
+  var box=document.getElementById('cuadreBody'); if(!box) return;
+  var lista=arr.concat(c.docs);
+  if(!lista.length){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:10px 0">Aún no escaneas facturas hoy. Usa <b>Escanear factura</b>.</div>'; return; }
+  box.innerHTML=lista.map(function(d,_i){
+    var esArr=(_i < arr.length); // las facturas de días anteriores van primero
+    var fp=(d.formaPago||'—'), tot=Number(d.valorConIva)||Number(d.monto)||0;
+    var soloEfMix=(fp==='MIXTO'&&d.pagoDetalle&&Object.keys(d.pagoDetalle).length&&Object.keys(d.pagoDetalle).every(function(k){return k==='EFECTIVO';}));
+    var esCreditoPuro=(fp.indexOf('CREDITO')>=0 && fp.indexOf('MIXTO')<0);
+    var requiere=(fp && fp!=='EFECTIVO' && !soloEfMix && !esCreditoPuro), estado;
+    if(esCreditoPuro) estado='<span class="cq-ok" style="color:#7A5210">🕓 a cobrar</span>';
+    else if(!requiere) estado='<span class="cq-ok">💵 efectivo</span>';
+    else if(d.tieneComprobante) estado='<span class="cq-ok">✓ comprobante</span>';
+    else estado='<button class="cq-att" data-cid="'+escEnt(d.clientReqId||'')+'" data-lbl="'+escEnt('Factura '+(d.folio||'—')+' · '+CP.clp(tot))+'" onclick="openCpAttachBtn(this)"'+(d.clientReqId?'':' disabled title="sincronizando…"')+'>📷 Adjuntar</button>';
+    var marca=esArr?'<span class="cq-warn">⚠ ayer</span> ':'';
+    return '<div class="cq-row"><div class="cq-main"><div class="cq-fol">'+escEnt(d.folio||'—')+'</div><div class="cq-meta">'+marca+escEnt(fp)+' · '+CP.clp(tot)+'</div></div>'+estado+'</div>';
+  }).join('');
+}
+// Panel "Mi día": el repartidor ve claro su proceso (ruta → facturas → cuadre) y qué le falta.
+function renderMiDia(){
+  if(!window.CP || !CP.cuadreDia) return;
+  var c=CP.cuadreDia();
+  var es=(typeof entregasPlanta!=='undefined'&&entregasPlanta)?entregasPlanta:[];
+  var rutaTotal=es.length, entregadas=es.filter(function(e){return e.estado==='entregada';}).length, rutaPend=rutaTotal-entregadas;
+  var compPend=c.pendientes.length;
+  var arr=c.arrastreN||0; // facturas de días anteriores sin respaldo
+  var bloq=(window.CPSupabase&&CPSupabase.bloqueados)?CPSupabase.bloqueados().length:0; // facturas rechazadas (4xx) sin subir
+  var st=document.getElementById('mdStatus'), ic=document.getElementById('mdIc'), hl=document.getElementById('mdHeadline');
+  var falta=[];
+  if(rutaTotal && rutaPend>0) falta.push(rutaPend+' entrega'+(rutaPend===1?'':'s')+' por firmar');
+  if(compPend>0) falta.push(compPend+' comprobante'+(compPend===1?'':'s')+' por adjuntar');
+  if(arr>0) falta.push(arr+' respaldo'+(arr===1?'':'s')+' de días anteriores');
+  if(st){
+    if(bloq>0){ st.className='md-status md-err'; if(ic)ic.textContent='✕'; if(hl)hl.textContent=bloq+' factura'+(bloq===1?'':'s')+' NO subieron · toca el indicador o avísale a planta'; }
+    else if(c.n===0 && rutaPend<=0){ st.className='md-status'; if(ic)ic.textContent='●'; if(hl)hl.textContent='Empieza escaneando tu primera factura'; }
+    else if(falta.length===0){ st.className='md-status md-ok'; if(ic)ic.textContent='✓'; if(hl)hl.textContent='Día cuadrado · puedes volver a planta'; }
+    else { st.className='md-status md-warn'; if(ic)ic.textContent='⚠'; if(hl)hl.textContent='Te falta: '+falta.join(' · '); }
+  }
+  var setS=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  setS('mdRuta', rutaTotal ? (entregadas+' de '+rutaTotal+' entregadas') : 'planta aún no carga tu ruta');
+  setS('mdFact', c.n+' factura'+(c.n===1?'':'s')+' hoy');
+  var pendTot=(c.pendienteMonto||0)+(c.arrastreMonto||0);
+  setS('mdCuadre', (compPend>0||arr>0) ? (CP.clp(pendTot)+' sin respaldo'+(arr>0?' (incl. ayer)':'')) : (c.n>0 ? 'todo respaldado ✓' : '—'));
+  var chk=function(id,ok){ var e=document.getElementById(id); if(e){ e.textContent=ok?'✓':''; e.className='md-s-chk'+(ok?' on':''); } };
+  chk('mdChkRuta', rutaTotal>0 && rutaPend===0);
+  chk('mdChkFact', c.n>0);
+  chk('mdChkCuadre', c.n>0 && compPend===0 && arr===0 && bloq===0);
+}
+function toggleMdHelp(){ var h=document.getElementById('mdHelp'), t=document.getElementById('mdHelpToggle'); if(!h) return; var abierto=h.style.display!=='none'; h.style.display=abierto?'none':'block'; if(t) t.textContent=abierto?'¿Cómo cuadrar mi día? ▾':'¿Cómo cuadrar mi día? ▴'; }
+var _cpAttId=null, _cpAttPdf=null, _cpAttGen=0;
+function openCpAttachBtn(el){ if(el.disabled) return; openCpAttach(el.getAttribute('data-cid'), el.getAttribute('data-lbl')); }
+function openCpAttach(clientReqId, label){
+  if(!clientReqId){ showToast('La factura aún se está sincronizando · espera señal'); return; }
+  _cpAttId=clientReqId; _cpAttPdf=null; _cpAttGen++;
+  var inf=document.getElementById('cpAttInfo'); if(inf) inf.textContent=label||'Respaldo de pago';
+  ['cpAttMonto','cpAttFecha','cpAttRef','cpAttRut'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var dt=document.getElementById('cpAttData'); if(dt) dt.style.display='none';
+  var em=document.getElementById('cpAttEmpty'); if(em) em.style.display='block';
+  var th=document.getElementById('cpAttThumb'); if(th) th.removeAttribute('src');
+  document.getElementById('cpAttBg').classList.add('open'); document.getElementById('cpAttSheet').classList.add('open');
+}
+function closeCpAttach(){ var b=document.getElementById('cpAttBg'),s=document.getElementById('cpAttSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); _cpAttId=null; }
+function procesarCpAttach(file){
+  if(!file) return; var miGen=++_cpAttGen; var est=document.getElementById('cpAttEstado');
+  var reader=new FileReader();
+  reader.onload=function(e){ if(miGen!==_cpAttGen) return;
+    var img=new Image();
+    img.onload=function(){ if(miGen!==_cpAttGen) return;
+      var maxW=1280, sc=Math.min(1,maxW/img.width); var cv=document.createElement('canvas'); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); var jpeg=cv.toDataURL('image/jpeg',0.72);
+      var fmaxW=1400, fsc=Math.min(1,fmaxW/img.width); var fcv=document.createElement('canvas'); fcv.width=Math.round(img.width*fsc); fcv.height=Math.round(img.height*fsc); fcv.getContext('2d').drawImage(img,0,0,fcv.width,fcv.height); var jpegFull=fcv.toDataURL('image/jpeg',0.75);
+      _cpAttPdf=imgToPdf(jpeg, cv.width, cv.height);
+      var th=document.getElementById('cpAttThumb'); if(th) th.src=jpeg;
+      var em=document.getElementById('cpAttEmpty'); if(em) em.style.display='none';
+      var dt=document.getElementById('cpAttData'); if(dt) dt.style.display='block';
+      if(est){ est.textContent='Leyendo con IA…'; est.style.color='var(--amber)'; }
+      if(navigator.onLine===false){ if(est){ est.textContent='Sin internet · ingresa los datos a mano'; est.style.color='var(--amber)'; } return; }
+      var aiP=(window.CPSupabase&&CPSupabase.extraerFactura)?CPSupabase.extraerFactura(jpegFull.split(',')[1]):Promise.resolve(null);
+      aiP.then(function(ai){ if(miGen!==_cpAttGen) return;
+        if(ai){ var m=Number(ai.valorConIva)||Number(ai.monto)||Number(ai.valorSinIva)||0; var setIf=function(id,val){ var el=document.getElementById(id); if(el&&!el.value&&val) el.value=val; };
+          if(m) setIf('cpAttMonto', m); setIf('cpAttFecha', ai.fecha); setIf('cpAttRef', (ai.folio!=null?String(ai.folio):'')); setIf('cpAttRut', ai.rutEmisor);
+          if(est){ est.textContent='✓ leído por IA · verifica los datos'; est.style.color='var(--green)'; } }
+        else if(est){ est.textContent='No se pudo leer · ingrésalo a mano'; est.style.color='var(--amber)'; }
+      });
+    };
+    img.onerror=function(){ if(est){ est.textContent='No se pudo abrir la imagen'; est.style.color='var(--red)'; } };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function guardarCpAttach(){
+  if(!_cpAttId){ closeCpAttach(); return; }
+  if(!_cpAttPdf){ showToast('Toma la foto del comprobante'); return; }
+  var g=function(id){ var e=document.getElementById(id); return e?(e.value||''):''; };
+  var info={ pdf:_cpAttPdf, monto: parseInt(g('cpAttMonto').replace(/\D/g,''),10)||null, fecha:g('cpAttFecha').trim(), ref:g('cpAttRef').trim(), rutOrigen:g('cpAttRut').trim() };
+  var id=_cpAttId, btn=document.getElementById('btnCpAtt'); if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+  try{ if(window.CP&&CP.actualizarComprobante) CP.actualizarComprobante(id, info); }catch(e){} // marca local (optimista)
+  var p=(window.CPSupabase&&CPSupabase.attachComprobanteSeguro)?CPSupabase.attachComprobanteSeguro(id, info):Promise.resolve({_ok:true});
+  p.then(function(res){
+    if(btn){ btn.disabled=false; btn.textContent='Guardar comprobante ✓'; }
+    closeCpAttach();
+    if(res&&res._encolado) showToast(res.token?'Guardado · vuelve a iniciar sesión para subirlo':'Guardado · se subirá al recuperar señal');
+    else showToast('✓ Comprobante adjuntado a la factura');
+    try{ renderCuadre(); }catch(e){}
+  });
+}
+// Abre la firma por ÍNDICE de la entrega (no se interpola el id en el HTML).
+function openSheetByIdx(el){ var i=parseInt(el&&el.getAttribute('data-eidx'),10); var e=(entregasPlanta||[])[i]; if(e&&e.id!=null) openSheet(e.id); }
 // Mi ruta de hoy = entregas asignadas desde planta, filtradas por la patente del conductor.
 function cargarMisEntregas(){
   var box=document.getElementById('rEntregas'); if(!box || !window.CPAuth) return;
@@ -457,7 +726,7 @@ function cargarMisEntregas(){
   var hoy=new Date().toISOString().slice(0,10);
   fetch(CPAuth.SB_URL+'/rest/v1/entregas?patente=eq.'+encodeURIComponent(pat)+'&fecha=eq.'+hoy+'&order=orden.asc.nullslast&select=*',{headers:{apikey:CPAuth.ANON,Authorization:'Bearer '+CPAuth.ANON}})
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(es){ es=Array.isArray(es)?es:[];
-    entregasPlanta=es; // cache para el flujo de firma (firmar la entrega REAL de planta)
+    entregasPlanta=es; try{ renderMiDia(); }catch(e){} // cache + actualiza el panel "Mi día" con la ruta real
     var ent=es.filter(function(e){return e.estado==='entregada';}).length;
     var sub=document.getElementById('rSub'); if(sub) sub.textContent=ent+' de '+es.length+' entregas';
     var _p100=(es.length?Math.round(ent/es.length*100):0);
@@ -466,10 +735,12 @@ function cargarMisEntregas(){
     if(!es.length){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">No tienes entregas asignadas para hoy. Planta carga tu ruta en el sistema.</div>'; return; }
     box.innerHTML=es.map(function(e,idx){ var done=e.estado==='entregada';
       var st=done?'<span class="st st-ok">✓ entregada</span>':'<span class="st st-pend">firmar →</span>';
-      var dir=(e.direccion||'')+(e.comuna?' · '+e.comuna:'');
-      var extra=(e.monto?' · '+(window.CP?CP.clp(e.monto):'$'+e.monto):'')+(e.folio?' · '+e.folio:'');
-      var tap=done?'':' onclick="openSheet(\''+e.id+'\')" style="cursor:pointer"';
-      return '<div class="deliv"'+tap+'><div class="num">'+(e.orden||idx+1)+'</div><div class="info"><div class="n">'+(e.cliente||e.codigo_cliente||'—')+'</div><div class="a">'+dir+extra+'</div></div>'+st+'</div>';
+      var dir=escEnt((e.direccion||'')+(e.comuna?' · '+e.comuna:''));
+      var extra=escEnt((e.monto?' · '+(window.CP?CP.clp(e.monto):'$'+e.monto):'')+(e.folio?' · '+e.folio:''));
+      // click por ÍNDICE (número), nunca interpolando e.id en el atributo → sin inyección
+      var tap=done?'':' data-eidx="'+idx+'" onclick="openSheetByIdx(this)" style="cursor:pointer"';
+      var _nu=navUrl(e); var nav=_nu?'<a class="navbtn" href="'+_nu+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 Ir</a>':'';
+      return '<div class="deliv"'+tap+'><div class="num">'+escEnt(e.orden||idx+1)+'</div><div class="info"><div class="n">'+escEnt(e.cliente||e.codigo_cliente||'—')+'</div><div class="a">'+dir+extra+'</div></div>'+nav+st+'</div>';
     }).join('');
   }).catch(function(err){
     var m=(err&&err.message)||'';
@@ -521,6 +792,7 @@ function openSheet(id){
     selEntregaRemota = er; selEntregaId = er.id;
     if(sub) sub.textContent = (er.cliente||er.codigo_cliente||'Entrega') + ' · ' + ((er.direccion||'')+(er.comuna?' · '+er.comuna:''));
     var ff=document.getElementById('firmaFactura'); if(ff && !ff.value && er.folio) ff.value=er.folio;
+    var fr=document.getElementById('firmaReceptor'); if(fr && !fr.value && ultimoReceptor) fr.value=ultimoReceptor; // reusa quien recibió (no teclear 2 veces)
   } else if(window.CP){
     // 2) Fallback: almacén local (comportamiento previo, conservado).
     var es = CP.entregas();
@@ -546,7 +818,7 @@ function setTab(t, el){ var tabs=document.querySelectorAll('.tabbar .tab'); for(
   closeAllSheets(); // cualquier toque en la barra inferior cierra overlays abiertos → nunca se traba
   if(t==='inicio'){ var hb=document.getElementById('homeBody'); if(hb){ if(hb.scrollTo){ hb.scrollTo({top:0,behavior:'smooth'}); } else { hb.scrollTop=0; } } else { window.scrollTo({top:0,behavior:'smooth'}); } }
   else if(t==='entregas'){ var c=document.getElementById('cardEntregas'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
-  else if(t==='rendir'){ var c=document.getElementById('cardEfectivo'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
+  else if(t==='rendir'){ try{ renderCuadre(); }catch(e){} var c=document.getElementById('cardCuadre'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   else if(t==='perfil'){ openPerfil(); } }
 function openPerfil(){ var p={}; try{p=JSON.parse(localStorage.getItem('cp_perfil')||'{}');}catch(e){}
   document.getElementById('pfNombre').textContent=p.nombre||'Conductor';
@@ -602,6 +874,7 @@ function confirmSig(){
   if(!hasSig){showToast('✍️ Por favor firma primero');return}
   var receptor = (document.getElementById('firmaReceptor').value||'').trim();
   if(!receptor){ showToast('✍️ Ingresa el nombre de quien recibe'); document.getElementById('firmaReceptor').focus(); return; }
+  ultimoReceptor = receptor; // comparte el nombre con el flujo de envío de la factura
   var firmaData = document.getElementById('sigPad').toDataURL('image/png');
   var factura = (document.getElementById('firmaFactura').value||'').trim();
   closeSheet();
@@ -611,19 +884,24 @@ function confirmSig(){
   showToast('✓ Recepción conforme · entrega registrada');
 }
 var toastQueue=[], toastBusy=false;
-function showToast(msg){
+function showToast(msg, tipo){
   msg=msg||'✓ Entrega registrada con firma';
-  if(toastQueue.length && toastQueue[toastQueue.length-1]===msg) return; // dedupe consecutivo
-  toastQueue.push(msg);
+  var last=toastQueue.length?toastQueue[toastQueue.length-1]:null;
+  if(last && last.msg===msg) return; // dedupe consecutivo
+  toastQueue.push({ msg:msg, tipo:tipo||'ok' });
   if(!toastBusy) processToastQueue();
 }
 function processToastQueue(){
   var t=document.getElementById('toast');
   if(!t || !toastQueue.length){ toastBusy=false; return; }
   toastBusy=true;
-  t.textContent=toastQueue.shift();
+  var it=toastQueue.shift();
+  t.textContent=it.msg;
+  t.classList.remove('t-warn','t-err');
+  if(it.tipo==='warn') t.classList.add('t-warn'); else if(it.tipo==='err') t.classList.add('t-err');
   t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); setTimeout(processToastQueue,320); },2400);
+  var dur=(it.tipo==='ok')?2400:4400; // ámbar/rojo duran más: el chofer debe alcanzar a leerlo
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(processToastQueue,320); },dur);
 }
 // ── Escáner real: foto de la factura → PDF → llega directo a planta ──
 var ultimoPdf = null;
@@ -634,12 +912,14 @@ function openScan(){
   var mf=document.getElementById('scanManual'); if(mf) mf.style.display='none';
   var pb=document.getElementById('pagoBox'); if(pb) pb.style.display='none';
   docPendiente=null; pagoSel=null;
+  try{ quitarComprobantePago(); }catch(e){}
   var pv=document.getElementById('scanPreview'); if(pv){ pv.style.display='none'; pv.src=''; }
   var fr=document.getElementById('scanFrame'); if(fr) fr.style.display='block';
   document.getElementById('btnVerPdf').disabled=true;
-  document.getElementById('scanTitle').textContent='Apunta al timbre electrónico';
-  document.getElementById('scanDesc').textContent='Encuadra el código PDF417 del documento';
-  escanearTimbreVivo(); // arranca el escaneo en vivo (lo más confiable para uso diario)
+  document.getElementById('scanTitle').textContent='Escanea tu factura';
+  document.getElementById('scanDesc').textContent='Toca “Tomar foto” y captura la factura completa';
+  var _v=document.getElementById('scanVideo'); if(_v) _v.style.display='none';
+  // Foto + IA es el camino confiable; el timbre PDF417 en vivo queda como opción secundaria (botón 📡).
 }
 function tomarFoto(){ detenerVivo(); document.getElementById('camInput').click(); }
 // ── Escaneo en vivo del timbre PDF417 con la cámara (ZXing, on-device, gratis) ──
@@ -732,6 +1012,8 @@ function procesarFoto(file){
             monto: Number(ai.valorConIva)||Number(ai.valorSinIva)||0, glosa: ai.glosa||'',
             codigoCliente: ai.codigoCliente||'', codigoTransporte: ai.codigoTransporte||'', ordenCompra: (ai.ordenCompra!=null?String(ai.ordenCompra):''),
             valorSinIva: Number(ai.valorSinIva)||0, valorConIva: Number(ai.valorConIva)||0,
+            // Validación de recepción: timbre del proveedor + firma del cliente en la factura física
+            timbreProveedor: !!ai.timbreProveedor, firmaReceptor: !!ai.firmaReceptor, visada: !!(ai.timbreProveedor && ai.firmaReceptor),
             fuente: fuente
           };
         }
@@ -762,14 +1044,28 @@ function procesarFoto(file){
   reader.readAsDataURL(file);
 }
 // Documento preparado, a la espera de forma de pago + envío a planta
-var docPendiente = null, pagoSel = null;
+var docPendiente = null, pagoSel = null, comprobantePago = null, _cpGen = 0; // _cpGen: invalida lecturas IA en vuelo
 function mostrarPago(){
   pagoSel=null; creditoTipo=null; mixtoComps=[];
   document.querySelectorAll('#pagoBtns .pago, #mixtoBox .pago-sub, #creditoBox .pago-sub').forEach(function(b){ b.classList.remove('on'); });
   var mb=document.getElementById('mixtoBox'); if(mb) mb.style.display='none';
   var cb=document.getElementById('creditoBox'); if(cb) cb.style.display='none';
+  var mm=document.getElementById('mixtoMontos'); if(mm) mm.innerHTML='';
+  var mr=document.getElementById('mixtoResumen'); if(mr) mr.textContent='';
+  var cpb=document.getElementById('cpagoBox'); if(cpb) cpb.style.display='none';
+  try{ quitarComprobantePago(); }catch(e){}
+  pintarVisada(); // refleja el timbre+firma que detectó la IA (o lo que el chofer marque)
   document.getElementById('pagoBox').style.display='block';
 }
+// Factura "visada": timbre del proveedor + firma del cliente. La IA la prefija; el chofer puede confirmar/cambiar.
+function pintarVisada(){
+  var box=document.getElementById('vtBox'), tog=document.getElementById('visadaTog'), ia=document.getElementById('vtIA');
+  var on=!!(docPendiente && docPendiente.visada);
+  if(box){ box.style.color=on?'#fff':'transparent'; box.style.background=on?'var(--green)':'transparent'; box.style.borderColor=on?'var(--green)':'var(--line-2)'; }
+  if(tog){ tog.style.borderColor=on?'rgba(30,127,84,.4)':'var(--line-2)'; tog.style.background=on?'rgba(30,127,84,.08)':'var(--bg)'; }
+  if(ia){ ia.textContent=(docPendiente && (docPendiente.timbreProveedor||docPendiente.firmaReceptor)) ? ('· IA '+(docPendiente.timbreProveedor?'timbre✓':'timbre✗')+' '+(docPendiente.firmaReceptor?'firma✓':'firma✗')) : ''; }
+}
+function toggleVisada(){ if(!docPendiente) return; docPendiente.visada=!docPendiente.visada; pintarVisada(); }
 function finalizarEscaneo(ted, file){
   var mf=document.getElementById('scanManual');
   if(ted){
@@ -782,6 +1078,7 @@ function finalizarEscaneo(ted, file){
       folio: ted.folio, fecha: ted.fecha, glosa: ted.glosa, fuente: ted.fuente,
       codigoCliente: ted.codigoCliente||'', codigoTransporte: ted.codigoTransporte||'', ordenCompra: ted.ordenCompra||'',
       valorSinIva: ted.valorSinIva||0, valorConIva: ted.valorConIva||ted.monto||0,
+      timbreProveedor: !!ted.timbreProveedor, firmaReceptor: !!ted.firmaReceptor, visada: !!ted.visada,
       pdf: ultimoPdf, archivo:(file.name||('dte-'+new Date().getTime()+'.pdf'))
     };
     renderScan(Object.assign({}, ted, { monto: ted.monto, fuente: ted.fuente, dteNombre: ted.dteNombre }));
@@ -840,15 +1137,50 @@ function selPago(el){
   el.classList.add('on');
   actualizarSubpagos();
 }
-// Muestra/oculta los sub-paneles según la forma de pago elegida (Mixto / Crédito).
+// Muestra/oculta los sub-paneles según la forma de pago elegida (Mixto / Crédito / Comprobante de pago).
 function actualizarSubpagos(){
   var esMixto = pagoSel==='MIXTO';
   var esCredito = pagoSel==='CREDITO' || (esMixto && mixtoComps.indexOf('CREDITO')>=0);
   var mb=document.getElementById('mixtoBox'), cb=document.getElementById('creditoBox');
   if(mb) mb.style.display = esMixto ? 'block':'none';
   if(cb) cb.style.display = esCredito ? 'block':'none';
-  if(!esMixto){ mixtoComps=[]; document.querySelectorAll('#mixtoBox .pago-sub').forEach(function(b){ b.classList.remove('on'); }); }
+  if(!esMixto){ mixtoComps=[]; document.querySelectorAll('#mixtoBox .pago-sub').forEach(function(b){ b.classList.remove('on'); }); var mm=document.getElementById('mixtoMontos'); if(mm) mm.innerHTML=''; var mr=document.getElementById('mixtoResumen'); if(mr) mr.textContent=''; }
   if(!esCredito){ creditoTipo=null; document.querySelectorAll('#creditoBox .pago-sub').forEach(function(b){ b.classList.remove('on'); }); }
+  if(esMixto) renderMixtoMontos();
+  // Comprobante de pago: visible para TODO pago no-efectivo (transferencia, débito, crédito, cheque, mixto con algo distinto de efectivo).
+  var soloEfectivo = (pagoSel==='EFECTIVO') || (esMixto && mixtoComps.length>0 && mixtoComps.every(function(m){return m==='EFECTIVO';}));
+  var mostrarCpago = !!pagoSel && !soloEfectivo;
+  var cpb=document.getElementById('cpagoBox'); if(cpb) cpb.style.display = mostrarCpago ? 'block':'none';
+  if(!mostrarCpago && comprobantePago){ try{ quitarComprobantePago(); }catch(e){} }
+}
+// Genera un input de monto por cada método marcado en el pago mixto (conserva lo ya escrito).
+function renderMixtoMontos(){
+  var cont=document.getElementById('mixtoMontos'); if(!cont) return;
+  var nombres={EFECTIVO:'Efectivo',DEBITO:'Débito',CREDITO:'Crédito',CHEQUE:'Cheque',TRANSFERENCIA:'Transferencia'};
+  var prev={}; Array.prototype.forEach.call(cont.querySelectorAll('input[data-mm]'), function(i){ prev[i.getAttribute('data-mm')]=(i.value||'').replace(/[^0-9]/g,''); });
+  cont.innerHTML = mixtoComps.map(function(m){
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:0 0 96px;font-size:11.5px;color:var(--ink-dim)">'+(nombres[m]||m)+'</span><input data-mm="'+m+'" inputmode="numeric" placeholder="Monto $" class="minp" style="flex:1" oninput="resumenMixto()" value="'+(prev[m]||'')+'"></div>';
+  }).join('');
+  resumenMixto();
+}
+function montoDoc(){ return (docPendiente && (Number(docPendiente.valorConIva)||Number(docPendiente.monto)))||0; }
+function _clp(n){ return window.CP ? CP.clp(n) : ('$'+(Number(n)||0)); }
+// Suma los montos del mixto y los compara con el total de la factura (aviso, no bloquea).
+function resumenMixto(){
+  var cont=document.getElementById('mixtoMontos'); var res=document.getElementById('mixtoResumen'); if(!res) return;
+  var suma=0; if(cont) Array.prototype.forEach.call(cont.querySelectorAll('input[data-mm]'), function(i){ suma+=parseInt((i.value||'').replace(/\D/g,''),10)||0; });
+  var tot=montoDoc();
+  if(!suma){ res.textContent=''; return; }
+  var dif=tot-suma;
+  if(tot && dif!==0){ res.textContent='Suma '+_clp(suma)+' · total '+_clp(tot)+' · '+(dif>0?('faltan '+_clp(dif)):('sobran '+_clp(-dif))); res.style.color='var(--red)'; }
+  else { res.textContent='Suma '+_clp(suma)+(tot?' = total ✓':''); res.style.color='var(--green)'; }
+}
+// Desglose mixto {METODO: monto} (solo métodos con monto > 0).
+function mixtoDetalle(){
+  if(pagoSel!=='MIXTO') return null;
+  var cont=document.getElementById('mixtoMontos'); if(!cont) return null;
+  var d={}; Array.prototype.forEach.call(cont.querySelectorAll('input[data-mm]'), function(i){ var v=parseInt((i.value||'').replace(/\D/g,''),10)||0; if(v) d[i.getAttribute('data-mm')]=v; });
+  return Object.keys(d).length?d:null;
 }
 function selCreditoTipo(el){
   creditoTipo = el.getAttribute('data-ct');
@@ -871,6 +1203,59 @@ function formaPagoFinal(){
   if(pagoSel==='CREDITO' && creditoTipo) return 'CREDITO '+creditoTipo;
   return pagoSel;
 }
+// ── Comprobante de pago: foto del respaldo (transferencia/no-efectivo) leída con la MISMA IA que la factura ──
+function tomarComprobantePago(){ var el=document.getElementById('camPago'); if(el) el.click(); }
+function quitarComprobantePago(){
+  comprobantePago=null; _cpGen++; // invalida cualquier lectura IA de un comprobante anterior aún en vuelo
+  ['cpMonto','cpFecha','cpRef','cpRutOrigen'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var th=document.getElementById('cpagoThumb'); if(th) th.removeAttribute('src');
+  var box=document.getElementById('cpagoData'); if(box) box.style.display='none';
+  var empty=document.getElementById('cpagoEmpty'); if(empty) empty.style.display='block';
+}
+function procesarComprobantePago(file){
+  var box=document.getElementById('cpagoData'), empty=document.getElementById('cpagoEmpty'), est=document.getElementById('cpagoEstado');
+  var miGen = ++_cpGen; // token de esta captura: si llega otra (o se limpia), las lecturas viejas se descartan
+  var reader=new FileReader();
+  reader.onload=function(e){
+    if(miGen!==_cpGen) return; // se reemplazó/limpió el comprobante mientras leía el archivo
+    var img=new Image();
+    img.onload=function(){
+      if(miGen!==_cpGen) return;
+      // Imagen comprimida → PDF (respaldo) y full → IA (no perder datos del encabezado)
+      var maxW=1280, sc=Math.min(1,maxW/img.width);
+      var cv=document.createElement('canvas'); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      var jpeg=cv.toDataURL('image/jpeg',0.72);
+      var fmaxW=1400, fsc=Math.min(1,fmaxW/img.width);
+      var fcv=document.createElement('canvas'); fcv.width=Math.round(img.width*fsc); fcv.height=Math.round(img.height*fsc);
+      fcv.getContext('2d').drawImage(img,0,0,fcv.width,fcv.height);
+      var jpegFull=fcv.toDataURL('image/jpeg',0.75);
+      comprobantePago = { pdf: imgToPdf(jpeg, cv.width, cv.height), jpeg: jpeg };
+      var th=document.getElementById('cpagoThumb'); if(th) th.src=jpeg;
+      if(empty) empty.style.display='none'; if(box) box.style.display='block';
+      if(est){ est.textContent='Leyendo con IA…'; est.style.color='var(--amber)'; }
+      if(navigator.onLine===false){ if(est){ est.textContent='Sin internet · ingresa los datos a mano'; est.style.color='var(--amber)'; } return; }
+      var aiP=(window.CPSupabase&&CPSupabase.extraerFactura)?CPSupabase.extraerFactura(jpegFull.split(',')[1]):Promise.resolve(null);
+      aiP.then(function(ai){
+        if(miGen!==_cpGen) return; // llegó tarde: el comprobante ya se cambió/limpió → no pisar la pantalla actual
+        if(ai){
+          var m=Number(ai.valorConIva)||Number(ai.monto)||Number(ai.valorSinIva)||0;
+          var setIf=function(id,val){ var el=document.getElementById(id); if(el && !el.value && val) el.value=val; };
+          if(m) setIf('cpMonto', m);
+          setIf('cpFecha', ai.fecha);
+          setIf('cpRef', (ai.folio!=null?String(ai.folio):''));
+          setIf('cpRutOrigen', ai.rutEmisor);
+          if(est){ est.textContent='✓ leído por IA · verifica los datos'; est.style.color='var(--green)'; }
+        } else {
+          if(est){ est.textContent='No se pudo leer · ingrésalo a mano'; est.style.color='var(--amber)'; }
+        }
+      });
+    };
+    img.onerror=function(){ if(est){ est.textContent='No se pudo abrir la imagen'; est.style.color='var(--red)'; } };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 // Base de la API: localStorage cp_api, o el mismo origen donde corre la PWA
 function cpApi(){ var a=localStorage.getItem('cp_api'); if(a) return a.replace(/\/$/,''); return location.origin + '/api'; }
 var _enviando = false;
@@ -878,10 +1263,50 @@ function enviarAPlanta(){
   if(_enviando) return;                                  // cerrojo de reentrancia (evita doble envío)
   if(!docPendiente){ showToast('Primero escanea la factura'); return; }
   if(!pagoSel){ showToast('Selecciona la forma de pago'); return; }
+  var _det=mixtoDetalle();
+  // MIXTO: exigir el desglose de montos → si no, el cuadre cuenta efectivo=0 y la caja no calza.
+  if(pagoSel==='MIXTO'){
+    if(!mixtoComps.length){ showToast('Marca con qué método(s) pagó el cliente'); return; }
+    if(mixtoComps.length===1){ _det={}; _det[mixtoComps[0]]=montoDoc(); } // un solo método → todo el total a ese método
+    else if(!_det || mixtoComps.some(function(m){ return !_det[m]; })){
+      showToast('Indica cuánto se pagó con cada método del mixto');
+      var _mm=document.querySelector('#mixtoMontos input[data-mm]'); if(_mm){ try{ _mm.focus(); }catch(e){} }
+      return;
+    }
+  }
+  // Aviso suave: el desglose mixto no cuadra con el total (no bloquea).
+  if(_det){ var _s=0; Object.keys(_det).forEach(function(k){ _s+=_det[k]; }); var _t=montoDoc();
+    if(_t && _s && _s!==_t){ if(!confirm('El desglose mixto suma '+_clp(_s)+' y el total es '+_clp(_t)+'.\n¿Enviar de todas formas?')) return; } }
+  // Aviso suave: factura sin folio → planta no podrá conciliarla contra el sistema (no bloquea).
+  if(!(docPendiente.folio && String(docPendiente.folio).trim())){
+    if(!confirm('Esta factura no tiene folio: planta no podrá conciliarla.\n¿Enviar igual?')) return;
+  }
+  // Aviso: folio YA enviado hoy → evita el doble cobro por re-escaneo (señal intermitente / pantalla al sol).
+  var _folDup=(docPendiente.folio||'').trim();
+  if(_folDup && window.CP && CP.documentos){
+    var _h0=new Date(); _h0.setHours(0,0,0,0);
+    var _dup=(CP.documentos()||[]).filter(function(x){ return x.folio && String(x.folio).trim()===_folDup && (x.ts||0)>=_h0.getTime() && x.tipo!=='ACTA_CONFORME'; })[0];
+    if(_dup){ var _min=Math.max(0,Math.round((Date.now()-(_dup.ts||Date.now()))/60000)); if(!confirm('El folio '+_folDup+' ya lo enviaste hoy'+(_min?(' (hace '+_min+' min)'):'')+'.\n¿Enviar de nuevo? Puede ser un cobro duplicado.')) return; }
+  }
+  // Aviso suave: pago no-efectivo sin comprobante adjunto (no bloquea).
+  var _soloEfvo=(pagoSel==='EFECTIVO')||(pagoSel==='MIXTO'&&mixtoComps.length>0&&mixtoComps.every(function(m){return m==='EFECTIVO';}));
+  if(!_soloEfvo && !(comprobantePago&&comprobantePago.pdf)){
+    if(!confirm('No adjuntaste el comprobante de pago.\nPodrás adjuntarlo después en “Rendir”.\n¿Enviar la factura sin él ahora?')) return;
+  }
   _enviando = true;
   var firmante=(document.getElementById('pagoFirmante').value||'').trim();
+  if(firmante) ultimoReceptor = firmante; // comparte el nombre con la firma de recepción
   docPendiente.formaPago = formaPagoFinal();
   docPendiente.firmante = firmante;
+  // Comprobante de pago (foto + datos leídos/corregidos) y desglose del mixto
+  if(comprobantePago && comprobantePago.pdf){
+    docPendiente.comprobantePagoPdf = comprobantePago.pdf;
+    docPendiente.pagoMonto = parseInt(((document.getElementById('cpMonto')||{}).value||'').replace(/\D/g,''),10) || null;
+    docPendiente.pagoFecha = ((document.getElementById('cpFecha')||{}).value||'').trim();
+    docPendiente.pagoReferencia = ((document.getElementById('cpRef')||{}).value||'').trim();
+    docPendiente.pagoRutOrigen = ((document.getElementById('cpRutOrigen')||{}).value||'').trim();
+  }
+  if(_det) docPendiente.pagoDetalle = _det;
   var _p = (function(){ try{ return JSON.parse(localStorage.getItem('cp_perfil')||'{}'); }catch(e){ return {}; } })();
   docPendiente.repartidor = _p.nombre || '';
   docPendiente.patente = _p.patente || '';
@@ -895,20 +1320,33 @@ function enviarAPlanta(){
     : fetch(cpApi()+'/documentos', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(docPendiente) }).then(function(r){ if(!r.ok) throw 0; return r.json(); });
   envio
     .then(function(res){
+      var _fol=(docPendiente&&docPendiente.folio)?(' · '+docPendiente.folio):'';
+      var _mon=' · '+_clp(montoDoc());
       if(res && res._encolado){
-        if(res._persistError){ cerrarTrasEnvio('⚠ Sin espacio para guardar. Exporta la planilla del día y libera espacio.'); }
-        else { var base='✓ Guardada · '+res.pendientes+' por sincronizar'; cerrarTrasEnvio(res.permanente ? (base+' (⚠ revisar datos)') : (base+' (sin señal)')); }
-      } else cerrarTrasEnvio('✓ Factura enviada a planta · '+pagoSel);
+        if(res._persistError){ cerrarTrasEnvio('⚠ NO se guardó'+_fol+_mon+' · exporta la planilla y libera espacio', 'err'); }
+        else if(res.permanente){ cerrarTrasEnvio('Guardada'+_fol+_mon+' · ⚠ revisar datos ('+res.pendientes+' en cola)', 'warn'); }
+        else { cerrarTrasEnvio('Guardada'+_fol+_mon+' · se subirá con señal ('+res.pendientes+' en cola)', 'warn'); }
+      } else {
+        // Subió OK: el PDF ya está en Storage → libera el base64 local (evita llenar localStorage a media jornada).
+        var _crid=(docPendiente&&docPendiente.clientReqId);
+        if(_crid && window.CP && CP.purgarPdf){ try{ CP.purgarPdf(_crid); }catch(e){} }
+        // Encadena la firma: si la factura calza con una entrega de la ruta aún sin firmar, abre la firma.
+        var _ent=(docPendiente&&docPendiente.folio)?(entregasPlanta||[]).filter(function(e){return e&&e.folio&&String(e.folio)===String(docPendiente.folio)&&e.estado!=='entregada';})[0]:null;
+        cerrarTrasEnvio('✓ Enviada a planta'+_fol+_mon, 'ok');
+        if(_ent){ var _eid=_ent.id; setTimeout(function(){ try{ openSheet(_eid); showToast('Ahora pide la firma de recepción ✍️'); }catch(e){} }, 1000); }
+      }
     })
-    .catch(function(){ cerrarTrasEnvio('✓ Guardada local · se sincronizará con planta'); })
+    .catch(function(){ var _f=(docPendiente&&docPendiente.folio)?(' · '+docPendiente.folio):''; cerrarTrasEnvio('Guardada local'+_f+' · se sincronizará con planta', 'warn'); })
     .then(function(){ _enviando = false; });               // libera el cerrojo siempre
 }
-function cerrarTrasEnvio(msg){
+function cerrarTrasEnvio(msg, tipo){
   var btn=document.getElementById('btnEnviar'); if(btn){ btn.disabled=false; btn.classList.remove('loading'); btn.textContent='Enviar a planta ✓'; }
   document.getElementById('pagoBox').style.display='none';
   docPendiente=null; pagoSel=null;
-  showToast(msg);
-  setTimeout(closeScan, 700);
+  try{ quitarComprobantePago(); }catch(e){}
+  var _f=document.getElementById('pagoFirmante'); if(_f) _f.value=''; // no arrastrar el firmante a la próxima factura
+  showToast(msg, tipo);
+  setTimeout(closeScan, (tipo&&tipo!=='ok')?1500:700); // si hubo aviso (cola/error), deja ver el toast antes de cerrar
 }
 function imgToPdf(jpegDataUrl,w,h){
   try{
@@ -980,19 +1418,52 @@ function exportarExcel(){
     showToast('✓ Excel exportado · ' + docs.length + ' documento(s)');
   }catch(err){ showToast('No se pudo exportar el Excel'); }
 }
-function closeScan(){ detenerVivo(); document.getElementById('scanner').classList.remove('open'); }
+function closeScan(){ detenerVivo(); document.getElementById('scanner').classList.remove('open');
+  // Cerrar por 'Cerrar'/Atrás/Escape deja el MISMO estado limpio que un envío (sin datos de pago residentes)
+  docPendiente=null; pagoSel=null; try{ quitarComprobantePago(); }catch(e){}
+  var pb=document.getElementById('pagoBox'); if(pb) pb.style.display='none';
+  var _f=document.getElementById('pagoFirmante'); if(_f) _f.value='';
+}
 // ── Indicador de conexión + cola pendiente ──
 (function(){
   var pill=document.createElement('div'); pill.className='netpill'; pill.innerHTML='<span class="d"></span><span id="netTxt"></span>';
   document.body.appendChild(pill);
+  pill.style.cursor='pointer';
+  var _sincronizandoManual=false;
+  pill.onclick=function(){
+    // Sesión vencida → re-loguear. Si no, forzar subida de la cola (señal que "volvió" sin evento online).
+    if(window.CPAuth&&CPAuth.valido&&!CPAuth.valido()){ try{ CPAuth.logout(); }catch(e){ location.replace('./login.html'); } return; }
+    if(!window.CPSupabase||!CPSupabase.sincronizarTodo) return;
+    var q=(CPSupabase.pendientes?CPSupabase.pendientes():0)+(CPSupabase.pendientesComprobantes?CPSupabase.pendientesComprobantes():0);
+    var bloq=(CPSupabase.bloqueados?CPSupabase.bloqueados().length:0);
+    if(!q && !bloq) return; // nada que reintentar
+    if(_sincronizandoManual) return; _sincronizandoManual=true;
+    showToast('Subiendo pendientes…');
+    CPSupabase.sincronizarTodo().then(function(){
+      _sincronizandoManual=false; try{ renderCuadre(); renderMiDia(); }catch(e){} upd();
+      var r=(CPSupabase.pendientes?CPSupabase.pendientes():0)+(CPSupabase.pendientesComprobantes?CPSupabase.pendientesComprobantes():0);
+      showToast(r? ('Quedan '+r+' por subir · revisa la señal') : '✓ Todo subido a planta', r?'warn':'ok');
+    });
+  };
   function upd(){
     var on = navigator.onLine !== false;
     var pend = (window.CPSupabase && CPSupabase.pendientes) ? CPSupabase.pendientes() : 0;
+    var pendC = (window.CPSupabase && CPSupabase.pendientesComprobantes) ? CPSupabase.pendientesComprobantes() : 0;
     var bloq = (window.CPSupabase && CPSupabase.bloqueados) ? CPSupabase.bloqueados().length : 0;
-    pill.classList.toggle('on', on && !bloq); pill.classList.toggle('off', !on && !bloq); pill.classList.toggle('alert', bloq>0);
-    var txt = on ? (pend>0 ? 'EN LÍNEA · SINC '+pend : 'EN LÍNEA') : (pend>0 ? 'SIN SEÑAL · '+pend+' EN COLA' : 'SIN SEÑAL · OCR LOCAL');
+    var sesionVencida = (window.CPAuth && CPAuth.valido && !CPAuth.valido());
+    var nt=document.getElementById('netTxt');
+    // Sesión vencida con respaldos/facturas sin subir = lo más peligroso (plata sin respaldo) → alerta roja tocable.
+    if(sesionVencida && (pendC>0 || pend>0)){
+      pill.classList.remove('on'); pill.classList.remove('off'); pill.classList.add('alert');
+      if(nt) nt.textContent='SESIÓN VENCIDA · '+(pendC+pend)+' SIN SUBIR · TOCA PARA REINICIAR';
+      return;
+    }
+    var alerta = bloq>0;
+    pill.classList.toggle('on', on && !alerta); pill.classList.toggle('off', !on && !alerta); pill.classList.toggle('alert', alerta);
+    var totPend = pend + pendC;
+    var txt = on ? (totPend>0 ? 'EN LÍNEA · SINC '+totPend : 'EN LÍNEA') : (totPend>0 ? 'SIN SEÑAL · '+totPend+' EN COLA' : 'SIN SEÑAL · OCR LOCAL');
     if(bloq>0) txt += ' · ⚠'+bloq+' REVISAR';
-    document.getElementById('netTxt').textContent = txt;
+    if(nt) nt.textContent = txt;
   }
   window.addEventListener('online',function(){ upd(); setTimeout(upd,4000); });
   window.addEventListener('offline',upd);
@@ -1001,6 +1472,7 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
   if(window.CPOcrOffline) setTimeout(function(){ try{ CPOcrOffline.precargar(); }catch(e){} }, 6000);
 })();
 (function(){ var ci=document.getElementById('camInput'); if(ci) ci.addEventListener('change', function(){ if(this.files&&this.files[0]) procesarFoto(this.files[0]); this.value=''; }); })();
+(function(){ var cp=document.getElementById('camPago'); if(cp) cp.addEventListener('change', function(){ if(this.files&&this.files[0]) procesarComprobantePago(this.files[0]); this.value=''; }); })();
 // ── Feedback de presión a prueba de "botón pegado" (WebView Android) ──
 // .is-pressed se agrega al tocar y se QUITA SIEMPRE (release/cancel/scroll/blur + timeout),
 // así ningún botón queda visualmente presionado/atascado.
@@ -1162,7 +1634,7 @@ function mostrarBannerInstalar() {
   b.id = 'installBanner';
   b.style.cssText = 'position:absolute;bottom:84px;left:14px;right:14px;background:#FFFFFF;border:1px solid #D6D1C3;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;z-index:55;animation:msgIn .4s ease both;box-shadow:0 10px 30px rgba(0,0,0,.14)';
   b.innerHTML = '<div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#F2A03D,#E07F1A);flex-shrink:0"></div>' +
-    '<div style="flex:1;font-size:12px;color:#232A33;line-height:1.4">Instala ConciliaPro en tu teléfono<br><span style="color:#5C6573;font-size:10.5px">Acceso directo, funciona sin conexión</span></div>' +
+    '<div style="flex:1;font-size:12px;color:#232A33;line-height:1.4">Instala RUFAI en tu teléfono<br><span style="color:#5C6573;font-size:10.5px">Acceso directo, funciona sin conexión</span></div>' +
     '<button id="btnInstall" style="background:linear-gradient(135deg,#F2A03D,#E07F1A);color:#2A1A05;border:none;padding:9px 14px;border-radius:9px;font-weight:600;font-size:12px;cursor:pointer">Instalar</button>' +
     '<button id="btnInstallX" style="background:transparent;color:#616A78;border:none;font-size:18px;cursor:pointer">×</button>';
   document.querySelector('.screen').appendChild(b);

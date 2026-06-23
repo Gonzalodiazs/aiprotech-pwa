@@ -147,6 +147,7 @@
       const maxContour = cornerPoints ? null : this.findPaperContour(img);
 
       if(maxContour == null && cornerPoints === undefined){
+        img.delete();
         return null;
       }
 
@@ -196,6 +197,8 @@
 
       img.delete()
       warpedDst.delete()
+      srcTri.delete(); dstTri.delete(); M.delete();   // libera los Mats (antes quedaban huérfanos → OOM)
+      try { if (maxContour) maxContour.delete(); } catch (e) {}
       return canvas;
     }
 

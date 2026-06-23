@@ -40,7 +40,7 @@
           var contour = scanner.findPaperContour(src);
           if (!contour) { src.delete(); return { canvas: null, found: false }; }
           var corners = scanner.getCornerPoints(contour, src);
-          src.delete();
+          contour.delete(); src.delete();   // libera el contorno (antes quedaba huérfano en cada escaneo → OOM)
           var tl = corners.topLeftCorner, tr = corners.topRightCorner,
               bl = corners.bottomLeftCorner, br = corners.bottomRightCorner;
           if (!tl || !tr || !bl || !br) return { canvas: null, found: false };

@@ -4,8 +4,12 @@
 (function () {
   var URL = 'https://ekmkzaogpnnqcctcnqpr.supabase.co';
   var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrbWt6YW9ncG5ucWNjdGNucXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMjE3NTAsImV4cCI6MjA5NjU5Nzc1MH0.4tuDPgrfsSXHsSiBVcrnDZbFymdR62wvJj0aSIdcm7s';
-  // Headers con el JWT del conductor (de cp_token); fallback a anon antes de login.
-  function tok() { return localStorage.getItem('cp_token') || KEY; }
+  // El repartidor usa la ANON key para datos. RLS ya está cerrado: documentos solo permite INSERT a anon
+  // (no SELECT/UPDATE) y el insert va con Prefer:return=minimal. clientes/usuarios/app_state/audit_log
+  // están cerrados a anon. El cp_token de cp-login SÍ es aceptado por PostgREST (la oficina lo usa), pero
+  // el teléfono se queda en anon a propósito: es app de campo offline y el token expira a las 12h; anon
+  // INSERT-only no expira y cubre lo único que el repartidor necesita (subir facturas). NO leer datos.
+  function tok() { return KEY; }
   function H() { return { apikey: KEY, Authorization: 'Bearer ' + tok() }; }
   function perfil() { try { return JSON.parse(localStorage.getItem('cp_perfil') || '{}'); } catch (e) { return {}; } }
 
@@ -15,20 +19,53 @@
     return new Blob([a], { type: 'application/pdf' });
   }
 
-  function uploadPDF(dataUrl) {
+  function uploadPDF(dataUrl, prefix) {
     if (!dataUrl) return Promise.resolve(null);
-    var name = 'dte-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1e6) + '.pdf';
+    // dataURL corrupto/truncado (p. ej. leído de un localStorage lleno) → atob lanza SÍNCRONO.
+    // Lo atrapamos para NO romper el envío de la factura: si el PDF falla, la fila se guarda igual sin él.
+    var blob; try { blob = dataUrlToBlob(dataUrl); } catch (e) { return Promise.resolve(null); }
+    var name = (prefix || 'dte') + '-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1e6) + '.pdf';
     return fetch(URL + '/storage/v1/object/comprobantes/' + name, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/pdf' }, H()),
-      body: dataUrlToBlob(dataUrl)
+      body: blob
     }).then(function (r) { return r.ok ? (URL + '/storage/v1/object/public/comprobantes/' + name) : null; })
       .catch(function () { return null; });
   }
 
-  // Inserta una factura. Sube el PDF primero (si hay) y guarda la fila.
+  // POST de la fila. Si falla con 400 por columna inexistente (PGRST204) y se mandaron
+  // campos "extra" (comprobante de pago), reintenta SIN ellos → la factura nunca se pierde
+  // por falta de migración. extraKeys = nombres de las columnas nuevas a quitar en el reintento.
+  function postFila(row, extraKeys) {
+    return fetch(URL + '/rest/v1/documentos', {
+      method: 'POST',
+      // return=minimal: documentos está cerrado a SELECT anon (RLS). return=representation haría un
+      // RETURNING que exige política SELECT → 42501. minimal NO devuelve body y el éxito no usa la fila.
+      headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }, H()),
+      body: JSON.stringify(row)
+    }).then(function (r) {
+      if (r.ok) return { _ok: true };
+      // 409 = ya existe una fila con el mismo client_req_id (clave de idempotencia) → un reintento de la
+      // cola tras "commit OK pero respuesta perdida" NO debe duplicar la factura. Lo tratamos como éxito.
+      if (r.status === 409) return { _idempotente: true };
+      if (r.status === 400 && extraKeys && extraKeys.length) {
+        return r.text().then(function (t) {
+          if (/PGRST204|schema cache|column/i.test(t || '')) {
+            try { console.warn('[CP] columnas de comprobante de pago aún no existen; guardo la factura sin ese detalle. Ejecuta el ALTER TABLE de documentos.'); } catch (e) {}
+            var base = {}; Object.keys(row).forEach(function (k) { if (extraKeys.indexOf(k) < 0) base[k] = row[k]; });
+            return postFila(base, null);
+          }
+          throw new Error('insert 400');
+        });
+      }
+      throw new Error('insert ' + r.status);
+    });
+  }
+
+  // Inserta una factura. Sube el PDF de la factura y (si hay) el del comprobante de pago, luego guarda la fila.
   function insertDoc(doc) {
-    return uploadPDF(doc.pdf).then(function (pdf_url) {
+    return Promise.all([uploadPDF(doc.pdf, 'dte'), uploadPDF(doc.comprobantePagoPdf, 'pago')]).then(function (urls) {
+      var pdf_url = urls[0], pago_url = urls[1];
       var row = {
         folio: doc.folio || '', dte_tipo: doc.dteTipo || '', dte_nombre: doc.dteNombre || doc.tipo || 'Documento',
         rut: doc.rut || '', rut_receptor: doc.rutReceptor || '', fecha: doc.fecha || '',
@@ -39,13 +76,22 @@
         valor_sin_iva: Number(doc.valorSinIva) || 0, valor_con_iva: Number(doc.valorConIva) || Number(doc.monto) || 0,
         forma_pago: (doc.formaPago || '').toUpperCase(), firmante: doc.firmante || '',
         repartidor: doc.repartidor || perfil().nombre || '', patente: doc.patente || perfil().patente || '', fuente: doc.fuente || '',
-        gps: doc.gps || null, pdf_url: pdf_url, empresa_id: doc.empresaId || perfil().empresa_id || null
+        gps: doc.gps || null, pdf_url: pdf_url, empresa_id: doc.empresaId || perfil().empresa_id || null,
+        // Validación de recepción: la factura física trae el timbre del proveedor + la firma del cliente
+        timbre_proveedor: !!doc.timbreProveedor, firma_receptor: !!doc.firmaReceptor, visada: !!doc.visada
       };
-      return fetch(URL + '/rest/v1/documentos', {
-        method: 'POST',
-        headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'return=representation' }, H()),
-        body: JSON.stringify(row)
-      }).then(function (r) { if (!r.ok) throw new Error('insert ' + r.status); return r.json().then(function (a) { return a[0]; }); });
+      // ── Idempotencia + comprobante de pago (columnas nuevas; el insert se auto-sana si aún no existen) ──
+      var extra = {};
+      if (doc.clientReqId) extra.client_req_id = String(doc.clientReqId); // evita factura duplicada en reintentos de la cola
+      if (pago_url) extra.comprobante_pago_url = pago_url;
+      if (doc.pagoMonto != null && doc.pagoMonto !== '') { var pm = Number(doc.pagoMonto); if (pm) extra.pago_monto = pm; }
+      if (doc.pagoFecha) extra.pago_fecha = String(doc.pagoFecha);
+      if (doc.pagoReferencia) extra.pago_referencia = String(doc.pagoReferencia);
+      if (doc.pagoRutOrigen) extra.pago_rut_origen = String(doc.pagoRutOrigen);
+      if (doc.pagoDetalle) extra.pago_detalle = (typeof doc.pagoDetalle === 'string') ? doc.pagoDetalle : JSON.stringify(doc.pagoDetalle);
+      var extraKeys = Object.keys(extra);
+      var full = extraKeys.length ? Object.assign({}, row, extra) : row;
+      return postFila(full, extraKeys);
     });
   }
 
@@ -108,7 +154,9 @@
   function qSet(a) { try { localStorage.setItem(QKEY, JSON.stringify(a)); return true; } catch (e) { return false; } }
 
   function insertDocSeguro(doc) {
-    return insertDoc(doc).catch(function (err) {
+    // Promise.resolve().then(insertDoc) → cualquier throw SÍNCRONO de insertDoc se vuelve rechazo
+    // y SÍ entra al .catch (se encola). Garantiza que jamás se pierda una factura ni se trabe el botón.
+    return Promise.resolve().then(function () { return insertDoc(doc); }).catch(function (err) {
       var msg = (err && err.message) ? String(err.message) : 'sin conexión';
       var m = /insert\s+(\d{3})/.exec(msg);
       var status = m ? Number(m[1]) : 0;
@@ -126,7 +174,9 @@
     // procesa en serie para no saturar
     return q.reduce(function (p, item) {
       return p.then(function () {
-        return insertDoc(item.doc).then(function () { ok++; item._done = true; })
+        // Promise.resolve().then → un throw síncrono de insertDoc (p. ej. dataURL corrupto en la cola)
+        // NO aborta todo el reduce: cae al .catch como "veneno" y los demás documentos se siguen reintentando.
+        return Promise.resolve().then(function () { return insertDoc(item.doc); }).then(function () { ok++; item._done = true; })
           .catch(function (e) {
             item.intentos = (item.intentos || 0) + 1;
             item.err = (e && e.message) ? String(e.message) : item.err;
@@ -143,12 +193,84 @@
   }
   function pendientes() { return qGet().length; }
   function bloqueados() { return qGet().filter(function (i) { return i._bloqueado; }); }
-  // auto-sincroniza al recuperar señal y al abrir la app
-  window.addEventListener('online', function () { sincronizarCola(); sincronizarEntregas(); });
-  setTimeout(function () { if (navigator.onLine) { sincronizarCola(); sincronizarEntregas(); } }, 3000);
+
+  // ── Comprobante de pago ADJUNTADO DESPUÉS (cuadre del día) ───────────────────────────
+  // Actualiza una factura YA enviada (UPDATE por client_req_id). El UPDATE va con el cp_token
+  // (authenticated) porque la anon key solo tiene INSERT en documentos (RLS). Sin señal o token
+  // vencido → se encola en cp_cola_comprobantes y se reintenta al recuperar conexión / re-login.
+  function authTok() { try { return localStorage.getItem('cp_token') || ''; } catch (e) { return ''; } }
+  function attachComprobante(clientReqId, info) {
+    info = info || {};
+    if (!clientReqId) return Promise.reject(new Error('comprobante sin id'));
+    return uploadPDF(info.pdf, 'pago').then(function (url) {
+      var patch = {
+        comprobante_pago_url: url || null,
+        pago_monto: (info.monto != null && info.monto !== '') ? Number(info.monto) : null,
+        pago_fecha: info.fecha || null, pago_referencia: info.ref || null, pago_rut_origen: info.rutOrigen || null
+      };
+      if (info.detalle) patch.pago_detalle = info.detalle;
+      var tk = authTok();
+      var hdrs = { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + (tk || KEY), Prefer: 'return=representation' };
+      var qs = URL + '/rest/v1/documentos?client_req_id=eq.' + encodeURIComponent(clientReqId);
+      return fetch(qs, { method: 'PATCH', headers: hdrs, body: JSON.stringify(patch) }).then(function (r) {
+        if (r.status === 401 || r.status === 403) throw new Error('comprobante 401'); // token venció → re-login
+        if (r.status === 400) { // columnas de pago aún sin migrar → reintenta solo con la URL
+          return fetch(qs, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ comprobante_pago_url: url || null }) })
+            .then(function (r2) { if (!r2.ok) throw new Error('comprobante ' + r2.status); return r2.json(); })
+            .then(function (a2) { if (!Array.isArray(a2) || !a2.length) throw new Error('comprobante 0'); return { _ok: true, url: url }; });
+        }
+        if (!r.ok) throw new Error('comprobante ' + r.status);
+        return r.json().then(function (a) { if (!Array.isArray(a) || !a.length) throw new Error('comprobante 0'); return { _ok: true, url: url }; });
+      });
+    });
+  }
+  var CQKEY = 'cp_cola_comprobantes';
+  function cqGet() { try { return JSON.parse(localStorage.getItem(CQKEY) || '[]'); } catch (e) { return []; } }
+  function cqSet(a) { try { localStorage.setItem(CQKEY, JSON.stringify(a)); return true; } catch (e) { return false; } }
+  function attachComprobanteSeguro(clientReqId, info) {
+    return Promise.resolve().then(function () { return attachComprobante(clientReqId, info); })
+      .catch(function (err) {
+        var msg = (err && err.message) ? String(err.message) : 'sin conexión';
+        var token = /401|403/.test(msg); // token venció: esperar re-login (no reintentar en bucle)
+        var q = cqGet(); q.push({ clientReqId: clientReqId, info: info, err: msg, token: token, t: new Date().getTime() });
+        var saved = cqSet(q);
+        try { console.warn('[CP] comprobante encolado:', msg); } catch (e) {}
+        return { _encolado: true, token: token, error: msg, pendientes: q.length, _persistError: !saved };
+      });
+  }
+  // ¿El cp_token todavía es válido (no vencido)? Evita el bucle de reintento con token expirado.
+  function tokenValido() { var t = authTok(); if (!t) return false; try { return JSON.parse(atob(t.split('.')[1])).exp * 1000 > Date.now(); } catch (e) { return false; } }
+  function sincronizarComprobantes() {
+    var q = cqGet(); if (!q.length) return Promise.resolve(0); var ok = 0;
+    return q.reduce(function (p, item) {
+      return p.then(function () {
+        if (item.token && !tokenValido()) return; // token VENCIDO → no reintentar (corta el bucle 401); espera re-login
+        // Si la factura del comprobante todavía está en la cola de inserts (aún no existe en BD),
+        // saltar: PATCH por client_req_id daría 0 filas. Se reintenta cuando el insert ya subió.
+        var insertPend = qGet().some(function (it) { return it.doc && it.doc.clientReqId === item.clientReqId; });
+        if (insertPend) return;
+        return attachComprobante(item.clientReqId, item.info).then(function () { ok++; item._done = true; })
+          .catch(function (e) { item.intentos = (item.intentos || 0) + 1; item.err = (e && e.message) || item.err; item.token = /401|403/.test(item.err || ''); });
+      });
+    }, Promise.resolve()).then(function () { cqSet(q.filter(function (i) { return !i._done; })); return ok; });
+  }
+  function pendientesComprobantes() { return cqGet().length; }
+  // auto-sincroniza al recuperar señal y al abrir la app (.catch evita "unhandled promise rejection").
+  // Encadenado: primero suben los inserts, LUEGO los comprobantes (su PATCH necesita que la factura ya exista).
+  function _sincronizarTodo() {
+    try {
+      sincronizarEntregas().catch(function () {});
+      return sincronizarCola().catch(function () { return {}; }).then(function () { return sincronizarComprobantes(); }).catch(function () { return 0; });
+    } catch (e) { return Promise.resolve(0); }
+  }
+  window.addEventListener('online', _sincronizarTodo);
+  setTimeout(function () { if (navigator.onLine) _sincronizarTodo(); }, 3000);
 
   window.CPSupabase = { URL: URL, KEY: KEY, uploadPDF: uploadPDF, insertDoc: insertDoc, insertDocSeguro: insertDocSeguro,
     listDocs: listDocs, marcarConciliado: marcarConciliado, extraerFactura: extraerFactura,
     sincronizarCola: sincronizarCola, pendientes: pendientes, bloqueados: bloqueados,
+    attachComprobante: attachComprobante, attachComprobanteSeguro: attachComprobanteSeguro,
+    sincronizarComprobantes: sincronizarComprobantes, pendientesComprobantes: pendientesComprobantes,
+    sincronizarTodo: _sincronizarTodo,
     cerrarEntrega: cerrarEntrega, sincronizarEntregas: sincronizarEntregas };
 })();

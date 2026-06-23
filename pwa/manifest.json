@@ -1,6 +1,6 @@
 {
-  "name": "ConciliaPro · Repartidor",
-  "short_name": "ConciliaPro",
+  "name": "RUFAI · Repartidor",
+  "short_name": "RUFAI",
   "description": "App de repartidores: rendiciones, firma, escáner OCR y GPS",
   "start_url": "./index.html",
   "scope": "./",

@@ -210,6 +210,14 @@
         ordenCompra: doc.ordenCompra || '',
         valorSinIva: Number(doc.valorSinIva) || 0,
         valorConIva: Number(doc.valorConIva) || Number(doc.monto) || 0,
+        // ── Cuadre del día: estado del comprobante de pago (para rendir cuadrado) ──
+        clientReqId: doc.clientReqId || '',
+        tieneComprobante: !!(doc.comprobantePagoPdf || doc.comprobante_pago_url),
+        pagoMonto: Number(doc.pagoMonto) || 0,
+        pagoFecha: doc.pagoFecha || '',
+        pagoReferencia: doc.pagoReferencia || '',
+        pagoRutOrigen: doc.pagoRutOrigen || '',
+        pagoDetalle: doc.pagoDetalle || null,
         estado: doc.estado || 'RECIBIDO_PLANTA',  // llega directo a planta
         ts: now()
       };
@@ -217,6 +225,73 @@
     },
     documentos: function () { return data.documentos.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }); },
     marcarDocumento: function (id, estado) { var x = data.documentos.filter(function (d) { return d.id === id; })[0]; if (x) { x.estado = estado || 'REVISADO'; persist(); } return x; },
+    // Marca un documento como "con comprobante" tras adjuntarlo después (busca por clientReqId).
+    actualizarComprobante: function (clientReqId, pago) {
+      pago = pago || {};
+      var d = data.documentos.filter(function (x) { return x.clientReqId && x.clientReqId === clientReqId; })[0];
+      if (!d) return null;
+      d.tieneComprobante = true;
+      if (pago.monto != null && pago.monto !== '') d.pagoMonto = Number(pago.monto) || d.pagoMonto;
+      if (pago.fecha) d.pagoFecha = pago.fecha;
+      if (pago.ref) d.pagoReferencia = pago.ref;
+      if (pago.rutOrigen) d.pagoRutOrigen = pago.rutOrigen;
+      persist(); return d;
+    },
+    // Libera el PDF base64 local de una factura YA subida a la nube (evita llenar localStorage).
+    purgarPdf: function (clientReqId) {
+      var d = data.documentos.filter(function (x) { return x.clientReqId && x.clientReqId === clientReqId; })[0];
+      if (d && d.pdf) { d.pdf = null; persist(); }
+      return !!d;
+    },
+    // Cuadre del día: efectivo a rendir + electrónico respaldado + lo que falta de comprobante.
+    cuadreDia: function () {
+      var hoy = new Date(); hoy.setHours(0, 0, 0, 0); var t0 = hoy.getTime();
+      var docs = data.documentos.filter(function (d) { return (d.ts || 0) >= t0; });
+      var efectivo = 0, electronicoOk = 0, pendienteMonto = 0, aCobrarDespues = 0, pendientes = [], porPago = {};
+      docs.forEach(function (d) {
+        var fp = (d.formaPago || '').toUpperCase();
+        var tot = Number(d.valorConIva) || Number(d.monto) || 0;
+        porPago[fp || '—'] = (porPago[fp || '—'] || 0) + tot;
+        var det = d.pagoDetalle || null;
+        var efDet = (det && det.EFECTIVO) ? Number(det.EFECTIVO) : (fp === 'EFECTIVO' ? tot : 0);
+        // Crédito (fiado a plazo): NO necesita comprobante; es "a cobrar después", no un pendiente del chofer.
+        var esCreditoPuro = fp.indexOf('CREDITO') >= 0 && fp.indexOf('MIXTO') < 0;
+        var credDet = (det && det.CREDITO) ? Number(det.CREDITO) : (esCreditoPuro ? tot : 0);
+        efectivo += efDet;
+        aCobrarDespues += credDet;
+        var soloEfMix = fp === 'MIXTO' && det && Object.keys(det).length && Object.keys(det).every(function (k) { return k === 'EFECTIVO'; });
+        var requiere = fp && fp !== 'EFECTIVO' && !soloEfMix && !esCreditoPuro;
+        if (requiere) {
+          var noEf = tot - efDet - credDet; // parte electrónica (transfer/débito/cheque) que SÍ necesita respaldo
+          if (noEf > 0) {
+            if (d.tieneComprobante) electronicoOk += noEf; else { pendienteMonto += noEf; pendientes.push(d); }
+          }
+        }
+      });
+      // Arrastre: facturas de días ANTERIORES que requieren comprobante y aún no lo tienen (no se borran a medianoche).
+      var pendientesArrastre = [], arrastreMonto = 0;
+      data.documentos.forEach(function (d) {
+        if ((d.ts || 0) >= t0) return;
+        var fp = (d.formaPago || '').toUpperCase();
+        if (!fp || fp === 'EFECTIVO') return;
+        if (fp.indexOf('CREDITO') >= 0 && fp.indexOf('MIXTO') < 0) return; // crédito puro no exige comprobante
+        var det = d.pagoDetalle || null;
+        var soloEfMix = fp === 'MIXTO' && det && Object.keys(det).length && Object.keys(det).every(function (k) { return k === 'EFECTIVO'; });
+        if (soloEfMix || d.tieneComprobante) return;
+        var tot = Number(d.valorConIva) || Number(d.monto) || 0;
+        var efDet = (det && det.EFECTIVO) ? Number(det.EFECTIVO) : 0;
+        var credDet = (det && det.CREDITO) ? Number(det.CREDITO) : 0;
+        if (tot - efDet - credDet > 0) { arrastreMonto += (tot - efDet - credDet); pendientesArrastre.push(d); }
+      });
+      return {
+        n: docs.length,
+        totalFacturado: docs.reduce(function (s, d) { return s + (Number(d.valorConIva) || Number(d.monto) || 0); }, 0),
+        efectivo: efectivo, electronicoOk: electronicoOk, pendienteMonto: pendienteMonto, aCobrarDespues: aCobrarDespues,
+        pendientesArrastre: pendientesArrastre, arrastreMonto: arrastreMonto, arrastreN: pendientesArrastre.length,
+        pendientes: pendientes, porPago: porPago,
+        docs: docs.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+      };
+    },
 
     // ── Incidencias (repartidor → planta) ──
     incidencias: function () { return data.incidencias.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }); },
