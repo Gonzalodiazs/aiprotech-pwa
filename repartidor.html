@@ -1520,18 +1520,24 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 (function(){
   function hayAbierto(){ var sc=document.getElementById('scanner'); return !!document.querySelector('.sheet.open, .sheet-bg.open') || (sc && sc.classList.contains('open')); }
   function cerrarTodo(){ try{ if(typeof closeAllSheets==='function') closeAllSheets(); }catch(e){} try{ if(typeof closeBio==='function') closeBio(); }catch(e){} try{ var sc=document.getElementById('scanner'); if(sc && sc.classList.contains('open') && typeof closeScan==='function') closeScan(); }catch(e){} }
+  var _backExit=0;
+  function onBack(){
+    if(hayAbierto()){ cerrarTodo(); return; }   // 1º atrás: cierra el panel/escáner abierto
+    // En el home, nada abierto → DOBLE atrás para salir (un toque accidental NO cierra la app).
+    var now=Date.now();
+    if(now-_backExit<2200){ try{ if(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App) Capacitor.Plugins.App.exitApp(); }catch(e){} }
+    else { _backExit=now; try{ showToast('Toca “atrás” otra vez para salir'); }catch(e){} }
+  }
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && hayAbierto()){ cerrarTodo(); } });
   try{
     if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App){
-      Capacitor.Plugins.App.addListener('backButton', function(){
-        if(hayAbierto()){ cerrarTodo(); } else { try{ Capacitor.Plugins.App.exitApp(); }catch(e){} }
-      });
+      Capacitor.Plugins.App.addListener('backButton', onBack);
     }
   }catch(e){}
 })();
 // ── Cerrar paneles inferiores: botón X (arriba-derecha) + arrastrar hacia abajo (swipe-down) ──
 (function(){
-  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic']];
+  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach']];
   sheets.forEach(function(s){
     var sh=document.getElementById(s[0]); if(!sh) return;
     function cerrar(){ try{ window[s[1]](); }catch(e){ sh.classList.remove('open'); } }
