@@ -333,6 +333,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
         <button class="pago" data-pago="CREDITO" onclick="selPago(this)">💳 Crédito</button>
         <button class="pago" data-pago="CHEQUE" onclick="selPago(this)">🧾 Cheque</button>
         <button class="pago" data-pago="TRANSFERENCIA" onclick="selPago(this)">🏦 Transferencia</button>
+        <button class="pago" data-pago="GETNET" onclick="selPago(this)">💳 Getnet</button>
         <button class="pago" data-pago="MIXTO" onclick="selPago(this)">🔀 Mixto</button>
       </div>
       <!-- Mixto: ¿con qué se pagó? (multi-selección) + monto por método -->
@@ -344,6 +345,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
           <button class="pago-sub" data-mc="CREDITO" onclick="toggleMixtoComp(this)">Crédito</button>
           <button class="pago-sub" data-mc="CHEQUE" onclick="toggleMixtoComp(this)">Cheque</button>
           <button class="pago-sub" data-mc="TRANSFERENCIA" onclick="toggleMixtoComp(this)">Transferencia</button>
+          <button class="pago-sub" data-mc="GETNET" onclick="toggleMixtoComp(this)">Getnet</button>
         </div>
         <!-- Monto pagado con cada método (se genera según lo que marques) -->
         <div id="mixtoMontos" style="margin-top:9px"></div>
@@ -565,6 +567,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <button class="pago" data-cp="CREDITO" onclick="selCorr(this)">💳 Crédito</button>
       <button class="pago" data-cp="CHEQUE" onclick="selCorr(this)">🧾 Cheque</button>
       <button class="pago" data-cp="TRANSFERENCIA" onclick="selCorr(this)">🏦 Transferencia</button>
+      <button class="pago" data-cp="GETNET" onclick="selCorr(this)">💳 Getnet</button>
     </div>
     <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin-bottom:6px">MONTO DE LA FACTURA</div>
     <input id="corrMonto" inputmode="numeric" placeholder="Monto $" class="minp" style="width:100%;box-sizing:border-box">
