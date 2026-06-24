@@ -268,12 +268,17 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       .cq-warn{display:inline-block;font-size:9px;font-weight:700;color:#9E2417;background:rgba(200,64,46,.12);border-radius:5px;padding:1px 5px;margin-right:3px}
       .cq-att{background:rgba(200,130,26,.12);color:#7A5210;border:1px solid rgba(200,130,26,.35);border-radius:9px;padding:7px 11px;font-family:var(--sans);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:36px}
       .cq-att:active{transform:scale(.97)}
+      .cq-corr{background:transparent;border:1px solid var(--line-2);border-radius:9px;padding:5px 8px;font-size:13px;line-height:1;cursor:pointer;min-height:34px;margin-right:5px;touch-action:manipulation}
+      .cq-corr:active{transform:scale(.9)}
       .tab .badge{position:absolute;top:2px;right:50%;transform:translateX(14px);background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;line-height:1}
     </style>
     <div class="card" id="cardCuadre" style="animation-delay:.28s">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div class="sec-title">Cuadre del día</div>
-        <button onclick="exportarExcel()" class="mini-btn">⬇ Excel</button>
+        <div style="display:flex;gap:6px">
+          <button onclick="openCierre()" class="mini-btn" style="background:rgba(66,185,133,.12);color:var(--green);border-color:rgba(66,185,133,.3)">🧾 Cerrar el día</button>
+          <button onclick="exportarExcel()" class="mini-btn">⬇ Excel</button>
+        </div>
       </div>
       <div id="cqAlerta" class="cq-alerta" style="display:none">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10.3 3.9a2 2 0 013.4 0l8 13.4a2 2 0 01-1.7 3H4a2 2 0 01-1.7-3z"/><path d="M12 9v4M12 17h.01"/></svg>
@@ -547,6 +552,47 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <button class="btn btn-primary" id="btnCpAtt" onclick="guardarCpAttach()">Guardar comprobante ✓</button>
     </div>
   </div>
+  <!-- Sheet: corregir la forma de pago / monto de una factura YA en el cuadre -->
+  <div class="sheet-bg" id="corrBg" onclick="closeCorr()"></div>
+  <div class="sheet" id="corrSheet">
+    <div class="handle"></div>
+    <h2>Corregir pago</h2>
+    <div class="sub" id="corrInfo">Factura</div>
+    <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin:4px 0 8px">FORMA DE PAGO CORRECTA</div>
+    <div id="corrBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px">
+      <button class="pago" data-cp="EFECTIVO" onclick="selCorr(this)">💵 Efectivo</button>
+      <button class="pago" data-cp="DEBITO" onclick="selCorr(this)">💳 Débito</button>
+      <button class="pago" data-cp="CREDITO" onclick="selCorr(this)">💳 Crédito</button>
+      <button class="pago" data-cp="CHEQUE" onclick="selCorr(this)">🧾 Cheque</button>
+      <button class="pago" data-cp="TRANSFERENCIA" onclick="selCorr(this)">🏦 Transferencia</button>
+    </div>
+    <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin-bottom:6px">MONTO DE LA FACTURA</div>
+    <input id="corrMonto" inputmode="numeric" placeholder="Monto $" class="minp" style="width:100%;box-sizing:border-box">
+    <div id="corrNota" style="font-size:11px;color:var(--ink-faint);margin-top:9px;line-height:1.4"></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-ghost" onclick="closeCorr()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCorr()">Guardar corrección ✓</button>
+    </div>
+  </div>
+  <!-- Sheet: cierre del día + resumen de rendición firmable (PDF) -->
+  <div class="sheet-bg" id="cierreBg" onclick="closeCierre()"></div>
+  <div class="sheet" id="cierreSheet">
+    <div class="handle"></div>
+    <h2>Cierre del día</h2>
+    <div class="sub">Revisa tu rendición antes de volver a planta</div>
+    <div id="cierreAlerta" class="cq-alerta" style="display:none;margin-bottom:10px">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10.3 3.9a2 2 0 013.4 0l8 13.4a2 2 0 01-1.7 3H4a2 2 0 01-1.7-3z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span id="cierreAlTxt">—</span>
+    </div>
+    <div id="cierreResumen" style="background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px;margin-bottom:12px"></div>
+    <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin-bottom:6px">FIRMA DEL RESPONSABLE (opcional)</div>
+    <canvas id="cierreSig" style="width:100%;height:140px;background:var(--bg);border:1px dashed var(--line-2);border-radius:14px;touch-action:none;display:block"></canvas>
+    <button class="mini-btn" style="margin-top:7px" onclick="clearCierreSig()">Borrar firma</button>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-ghost" onclick="closeCierre()">Cerrar</button>
+      <button class="btn btn-primary" onclick="generarRendicion()">Generar resumen (PDF) ✓</button>
+    </div>
+  </div>
   <div class="toast" id="toast">✓ Entrega registrada con firma</div>
   <!-- Tabbar -->
   <div class="tabbar">
@@ -630,7 +676,8 @@ function renderCuadre(){
     else if(d.tieneComprobante) estado='<span class="cq-ok">✓ comprobante</span>';
     else estado='<button class="cq-att" data-cid="'+escEnt(d.clientReqId||'')+'" data-lbl="'+escEnt('Factura '+(d.folio||'—')+' · '+CP.clp(tot))+'" onclick="openCpAttachBtn(this)"'+(d.clientReqId?'':' disabled title="sincronizando…"')+'>📷 Adjuntar</button>';
     var marca=esArr?'<span class="cq-warn">⚠ ayer</span> ':'';
-    return '<div class="cq-row"><div class="cq-main"><div class="cq-fol">'+escEnt(d.folio||'—')+'</div><div class="cq-meta">'+marca+escEnt(fp)+' · '+CP.clp(tot)+'</div></div>'+estado+'</div>';
+    var corr=d.clientReqId?'<button class="cq-corr" title="Corregir forma de pago / monto" data-cid="'+escEnt(d.clientReqId)+'" data-fp="'+escEnt(fp)+'" data-mt="'+tot+'" data-fol="'+escEnt(d.folio||'—')+'" onclick="openCorrBtn(this)">✏️</button>':'';
+    return '<div class="cq-row"><div class="cq-main"><div class="cq-fol">'+escEnt(d.folio||'—')+'</div><div class="cq-meta">'+marca+escEnt(fp)+' · '+CP.clp(tot)+'</div></div><div style="display:flex;align-items:center;gap:2px">'+corr+estado+'</div></div>';
   }).join('');
 }
 // Panel "Mi día": el repartidor ve claro su proceso (ruta → facturas → cuadre) y qué le falta.
@@ -719,6 +766,110 @@ function guardarCpAttach(){
     else showToast('✓ Comprobante adjuntado a la factura');
     try{ renderCuadre(); }catch(e){}
   });
+}
+// ───────── Corregir forma de pago / monto de una factura del cuadre ─────────
+var _corrId=null, _corrFp=null;
+function openCorrBtn(el){ if(!el) return; openCorr(el.getAttribute('data-cid'), el.getAttribute('data-fol'), el.getAttribute('data-fp'), el.getAttribute('data-mt')); }
+function openCorr(clientReqId, folio, fp, monto){
+  if(!clientReqId){ showToast('La factura aún se sincroniza · espera señal'); return; }
+  _corrId=clientReqId; _corrFp=(fp||'').toUpperCase();
+  var inf=document.getElementById('corrInfo'); if(inf) inf.textContent='Factura '+(folio||'—');
+  var btns=document.querySelectorAll('#corrBtns .pago'); for(var i=0;i<btns.length;i++){ btns[i].classList.toggle('on', btns[i].getAttribute('data-cp')===_corrFp); }
+  var mt=document.getElementById('corrMonto'); if(mt) mt.value=(monto&&Number(monto))?Number(monto):'';
+  var nt=document.getElementById('corrNota'); if(nt) nt.textContent='';
+  document.getElementById('corrBg').classList.add('open'); document.getElementById('corrSheet').classList.add('open');
+}
+function closeCorr(){ var b=document.getElementById('corrBg'),s=document.getElementById('corrSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); _corrId=null; }
+function selCorr(el){ var btns=document.querySelectorAll('#corrBtns .pago'); for(var i=0;i<btns.length;i++) btns[i].classList.remove('on'); el.classList.add('on'); _corrFp=el.getAttribute('data-cp');
+  var nt=document.getElementById('corrNota'); if(nt){ nt.textContent=(_corrFp==='EFECTIVO')?'Pasará a efectivo a rendir (sin comprobante).':((_corrFp==='CREDITO')?'Crédito: a cobrar después (sin comprobante).':'Esta forma de pago requiere comprobante de respaldo.'); }
+}
+function guardarCorr(){
+  if(!_corrId){ closeCorr(); return; }
+  if(!_corrFp){ showToast('Elige la forma de pago correcta'); return; }
+  var mtRaw=(document.getElementById('corrMonto').value||'').replace(/\D/g,'');
+  var monto=mtRaw?parseInt(mtRaw,10):null;
+  var info={ formaPago:_corrFp }; if(monto!=null) info.monto=monto;
+  if(_corrFp!=='MIXTO') info.detalle=null; // al fijar una forma simple se limpia cualquier desglose mixto previo
+  try{ if(window.CP&&CP.corregirPago) CP.corregirPago(_corrId, info); }catch(e){} // corrige el cuadre LOCAL de inmediato
+  var id=_corrId;
+  var p=(window.CPSupabase&&CPSupabase.corregirPagoRemoto)?CPSupabase.corregirPagoRemoto(id, info):Promise.resolve({_ok:true});
+  closeCorr();
+  try{ renderCuadre(); renderMiDia(); }catch(e){}
+  p.then(function(){ showToast('✓ Pago corregido'); }).catch(function(err){
+    var m=(err&&err.message)||''; showToast(/401|403/.test(m)?'Corregido aquí · inicia sesión para sincronizarlo':'Corregido aquí · se reflejará en planta con señal','warn');
+  });
+}
+// ───────── Cierre del día: resumen de rendición firmable (PDF) ─────────
+var _cierreCtx=null, _cierreHas=false;
+function openCierre(){
+  if(!window.CP||!CP.cuadreDia){ return; }
+  renderCierreResumen();
+  document.getElementById('cierreBg').classList.add('open'); document.getElementById('cierreSheet').classList.add('open');
+  setTimeout(initCierreSig, 60); // dimensiona el canvas cuando el panel ya está visible
+}
+function closeCierre(){ var b=document.getElementById('cierreBg'),s=document.getElementById('cierreSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); }
+function renderCierreResumen(){
+  var c=CP.cuadreDia();
+  var box=document.getElementById('cierreResumen'); if(!box) return;
+  var rows=[['💵 Efectivo a rendir', CP.clp(c.efectivo), true], ['🏦 Con comprobante', CP.clp(c.electronicoOk), false]];
+  if(c.aCobrarDespues>0) rows.push(['🕓 A cobrar después (crédito)', CP.clp(c.aCobrarDespues), false]);
+  rows.push(['📄 Total facturado · '+c.n+' fact.', CP.clp(c.totalFacturado), false]);
+  var html=rows.map(function(r){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px'+(r[2]?';font-weight:800':'')+'"><span style="color:var(--ink-dim)">'+r[0]+'</span><span style="font-family:var(--mono)">'+r[1]+'</span></div>'; }).join('');
+  var fps=Object.keys(c.porPago||{}).filter(function(k){return c.porPago[k]>0;});
+  if(fps.length){ html+='<div style="border-top:1px solid var(--line-2);margin-top:8px;padding-top:8px;font-size:10px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.05em">POR FORMA DE PAGO</div>';
+    html+=fps.map(function(k){ return '<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:12px"><span style="color:var(--ink-dim)">'+escEnt(k)+'</span><span style="font-family:var(--mono)">'+CP.clp(c.porPago[k])+'</span></div>'; }).join('');
+  }
+  box.innerHTML=html;
+  var pend=(c.pendientes.length)+(c.arrastreN||0), pm=(c.pendienteMonto||0)+(c.arrastreMonto||0);
+  var al=document.getElementById('cierreAlerta'), tx=document.getElementById('cierreAlTxt');
+  if(al){ if(pend>0){ al.style.display='flex'; if(tx) tx.textContent='Aún faltan '+pend+' comprobante'+(pend===1?'':'s')+' ('+CP.clp(pm)+'). Puedes generar el resumen igual; queda registrado lo pendiente.'; } else al.style.display='none'; }
+}
+function initCierreSig(){ var c=document.getElementById('cierreSig'); if(!c) return; var r=c.getBoundingClientRect(); if(!r.width) return; c.width=r.width; c.height=r.height; var cx=c.getContext('2d'); cx.strokeStyle='#232A33'; cx.lineWidth=2.5; cx.lineCap='round'; cx.lineJoin='round'; _cierreCtx=cx; _cierreHas=false;
+  function pos(e){ var rect=c.getBoundingClientRect(); var t=e.touches?e.touches[0]:e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; }
+  var dr=false;
+  function st(e){ dr=true; _cierreHas=true; var p=pos(e); cx.beginPath(); cx.moveTo(p.x,p.y); e.preventDefault(); }
+  function mv(e){ if(!dr)return; var p=pos(e); cx.lineTo(p.x,p.y); cx.stroke(); e.preventDefault(); }
+  function en(){ dr=false; }
+  c.onmousedown=st; c.onmousemove=mv; c.onmouseup=en; c.onmouseleave=en; c.ontouchstart=st; c.ontouchmove=mv; c.ontouchend=en;
+}
+function clearCierreSig(){ if(_cierreCtx){ _cierreCtx.clearRect(0,0,9999,9999); _cierreHas=false; } }
+function rendicionPdf(c, firmaData, nombre, patente){
+  if(!window.jspdf||!window.jspdf.jsPDF) return null;
+  try{
+    var doc=new window.jspdf.jsPDF({unit:'pt',format:'a5'});
+    doc.setFontSize(15); doc.text('RESUMEN DE RENDICION DEL DIA',40,46);
+    doc.setDrawColor(190); doc.line(40,56,380,56);
+    doc.setFontSize(10.5); var y=80;
+    function L(t,bold){ if(bold)doc.setFont(undefined,'bold'); doc.text(String(t),40,y); if(bold)doc.setFont(undefined,'normal'); y+=18; }
+    L('Repartidor: '+(nombre||'-')+(patente?('   ·   '+patente):''));
+    L('Fecha: '+new Date().toLocaleString('es-CL'));
+    L('Facturas del dia: '+c.n+'   ·   Facturado: '+CP.clp(c.totalFacturado));
+    doc.line(40,y-6,380,y-6); y+=6;
+    L('Efectivo a rendir: '+CP.clp(c.efectivo), true);
+    L('Con comprobante: '+CP.clp(c.electronicoOk));
+    if(c.aCobrarDespues>0) L('A cobrar despues (credito): '+CP.clp(c.aCobrarDespues));
+    var pend=(c.pendientes.length)+(c.arrastreN||0), pm=(c.pendienteMonto||0)+(c.arrastreMonto||0);
+    if(pend>0) L('PENDIENTE sin comprobante: '+pend+' ('+CP.clp(pm)+')', true);
+    doc.line(40,y-6,380,y-6); y+=6;
+    var fps=Object.keys(c.porPago||{}).filter(function(k){return c.porPago[k]>0;});
+    if(fps.length){ L('Por forma de pago:'); fps.forEach(function(k){ L('   '+k+': '+CP.clp(c.porPago[k])); }); }
+    y+=12; doc.text('Firma:',40,y);
+    if(firmaData){ try{ doc.addImage(firmaData,'PNG',92,y-16,160,56); }catch(e2){} }
+    else { doc.setDrawColor(150); doc.line(92,y,260,y); }
+    return doc;
+  }catch(err){ return null; }
+}
+function generarRendicion(){
+  if(!window.CP||!CP.cuadreDia) return;
+  var c=CP.cuadreDia();
+  var pf=(function(){try{return JSON.parse(localStorage.getItem('cp_perfil')||'{}');}catch(e){return {};}})();
+  var firmaData=_cierreHas?document.getElementById('cierreSig').toDataURL('image/png'):null;
+  var doc=rendicionPdf(c, firmaData, pf.nombre||'Repartidor', pf.patente||'');
+  if(!doc){ showToast('No se pudo generar el PDF'); return; }
+  var fname='rendicion-'+new Date().toISOString().slice(0,10)+'.pdf';
+  try{ doc.save(fname); }catch(e){ try{ window.open(doc.output('bloburl'),'_blank'); }catch(e2){ try{ window.open(doc.output('datauristring'),'_blank'); }catch(e3){} } }
+  closeCierre();
+  showToast('✓ Resumen de rendición generado');
 }
 // Abre la firma por ÍNDICE de la entrega (no se interpola el id en el HTML).
 function openSheetByIdx(el){ var i=parseInt(el&&el.getAttribute('data-eidx'),10); var e=(entregasPlanta||[])[i]; if(e&&e.id!=null) openSheet(e.id); }
@@ -1541,7 +1692,7 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 })();
 // ── Cerrar paneles inferiores: botón X (arriba-derecha) + arrastrar hacia abajo (swipe-down) ──
 (function(){
-  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach']];
+  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach'],['corrSheet','closeCorr'],['cierreSheet','closeCierre']];
   sheets.forEach(function(s){
     var sh=document.getElementById(s[0]); if(!sh) return;
     var _cerrando=false;

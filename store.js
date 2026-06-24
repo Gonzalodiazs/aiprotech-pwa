@@ -1,14 +1,15 @@
 /* ============================================================================
-   ConciliaPro · Almacén de datos local compartido (sin backend, sin dinero real)
-   - Persiste en localStorage del WebView (clave cp_data_v1).
-   - Lo usan los 4 módulos: repartidor, planta, portal, dashboard.
-   - Pagos e IA son SIMULADOS. No se mueve dinero real ni se llama a APIs de pago.
+   RUFAI · Caché de datos local del WebView (clave cp_data_v6).
+   - Espejo offline de lo que cp-supabase.js sincroniza con Supabase (datos REALES).
+   - Lo usan los módulos: repartidor, planta, portal, dashboard.
+   - Sin datos demo: arranca vacío y se llena con la operación real.
    ========================================================================== */
 (function (global) {
   var KEY = 'cp_data_v6';
 
-  // Precio unitario demo para estimar montos de notas (no es dinero real)
-  var PRECIO_UNIT_DEMO = 4500;
+  // Precio unitario de REFERENCIA para estimar el monto de una nota cuando el chofer
+  // NO ingresa el precio real (se marca montoEstimado=true para no confundirlo con dato real).
+  var PRECIO_UNIT_REF = 4500;
 
   function now() { return new Date().getTime(); }
   function uid(p) { return (p || 'id') + '_' + now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
@@ -19,114 +20,6 @@
     RECHAZO_CLIENTE: 'CREDITO', DEVOLUCION: 'CREDITO', SOBRANTE: 'COBRO'
   };
 
-  function seed() {
-    var d = now(), DAY = 864e5;
-    return {
-      empresa: 'Distribuidora del Pacífico SpA',
-      cliente: { nombre: 'Comercial Andes', rut: '77.111.222-3' },
-      repartidor: { id: 'r1', nombre: 'Juan Pérez', ruta: 'RUTA NORTE R-04' },
-
-      repartidores: [
-        { id: 'r1', nombre: 'J. Pérez', ini: 'JP', ruta: 'Norte · R-04', vehiculo: 'Camión 3/4 · KXYZ-12', efectivoSalida: 420000, respaldado: 420000, difCaja: 0, fraude: 0.04, firma: 'digital', estado: 'CERRADA' },
-        { id: 'r2', nombre: 'M. Soto', ini: 'MS', ruta: 'Centro · R-01', vehiculo: 'Furgón · LPRT-44', efectivoSalida: 510000, respaldado: 385000, difCaja: -125000, fraude: 0.91, firma: 'revisar', estado: 'SOSPECHOSA' },
-        { id: 'r3', nombre: 'C. Rojas', ini: 'CR', ruta: 'Sur · R-07', vehiculo: 'Camión · TRSU-21', efectivoSalida: 380000, respaldado: 362000, difCaja: -18000, fraude: 0.22, firma: 'biométrica', estado: 'DIFERENCIA' },
-        { id: 'r4', nombre: 'L. Muñoz', ini: 'LM', ruta: 'Oriente · R-03', vehiculo: 'Van · MNZA-08', efectivoSalida: 295000, respaldado: 295000, difCaja: 0, fraude: 0.07, firma: 'digital', estado: 'CERRADA' },
-        { id: 'r5', nombre: 'F. Díaz', ini: 'FD', ruta: 'Poniente · R-09', vehiculo: 'Camión 3/4 · PNTE-09', efectivoSalida: 640000, respaldado: 0, difCaja: 0, fraude: 0, firma: 'pendiente', estado: 'EN_RUTA' }
-      ],
-
-      // Entregas asignadas por conductor (con guía, factura, kilos, volumen)
-      entregas: [
-        // J. Pérez (r1)
-        { id: uid('e'), repartidorId: 'r1', cliente: 'Comercial Andes', direccion: 'Av. Independencia 1402', monto: 52000, kilos: 180, volumen: 1.2, guia: 'GD-9001', factura: '9001', estado: 'firmada', conforme: true, receptor: 'Recepción', ts: d - 5 * 36e5 },
-        { id: uid('e'), repartidorId: 'r1', cliente: 'Minimarket El Sol', direccion: 'Recoleta 890', monto: 38000, kilos: 95, volumen: 0.6, guia: 'GD-9002', factura: '9002', estado: 'firmada', conforme: true, receptor: 'Recepción', ts: d - 4 * 36e5 },
-        { id: uid('e'), repartidorId: 'r1', cliente: 'Distrib. Norte Ltda', direccion: 'Vivaceta 3201', monto: 64000, kilos: 240, volumen: 1.8, guia: 'GD-9003', factura: '9003', estado: 'pendiente', ts: d },
-        { id: uid('e'), repartidorId: 'r1', cliente: 'Almacén Doña Rosa', direccion: 'Einstein 445', monto: 41000, kilos: 120, volumen: 0.9, guia: 'GD-9004', factura: '9004', estado: 'pendiente', ts: d },
-        // M. Soto (r2)
-        { id: uid('e'), repartidorId: 'r2', cliente: 'Supermercado Centro', direccion: 'Alameda 120', monto: 88000, kilos: 310, volumen: 2.1, guia: 'GD-9010', factura: '9010', estado: 'firmada', conforme: true, receptor: 'Bodega', ts: d - 3 * 36e5 },
-        { id: uid('e'), repartidorId: 'r2', cliente: 'Botillería La Esquina', direccion: 'Santa Rosa 540', monto: 47000, kilos: 150, volumen: 1.0, guia: 'GD-9011', factura: '9011', estado: 'pendiente', ts: d },
-        { id: uid('e'), repartidorId: 'r2', cliente: 'Almacén San Diego', direccion: 'San Diego 980', monto: 53000, kilos: 175, volumen: 1.3, guia: 'GD-9012', factura: '9012', estado: 'pendiente', ts: d },
-        // C. Rojas (r3)
-        { id: uid('e'), repartidorId: 'r3', cliente: 'Minimarket Sur', direccion: 'Gran Avenida 4500', monto: 36000, kilos: 110, volumen: 0.7, guia: 'GD-9020', factura: '9020', estado: 'firmada', conforme: true, receptor: 'Caja', ts: d - 2 * 36e5 },
-        { id: uid('e'), repartidorId: 'r3', cliente: 'Distribuidora El Pino', direccion: 'El Pinar 220', monto: 72000, kilos: 260, volumen: 1.9, guia: 'GD-9021', factura: '9021', estado: 'pendiente', ts: d },
-        // L. Muñoz (r4)
-        { id: uid('e'), repartidorId: 'r4', cliente: 'Comercial Oriente', direccion: 'Las Condes 7700', monto: 64000, kilos: 200, volumen: 1.5, guia: 'GD-9030', factura: '9030', estado: 'firmada', conforme: true, receptor: 'Recepción', ts: d - 2 * 36e5 },
-        { id: uid('e'), repartidorId: 'r4', cliente: 'Market Apoquindo', direccion: 'Apoquindo 5400', monto: 49000, kilos: 140, volumen: 1.0, guia: 'GD-9031', factura: '9031', estado: 'pendiente', ts: d },
-        // F. Díaz (r5, en ruta)
-        { id: uid('e'), repartidorId: 'r5', cliente: 'Mayorista Poniente', direccion: 'Pajaritos 2300', monto: 95000, kilos: 340, volumen: 2.4, guia: 'GD-9040', factura: '9040', estado: 'pendiente', ts: d },
-        { id: uid('e'), repartidorId: 'r5', cliente: 'Almacén Maipú', direccion: '5 de Abril 1200', monto: 58000, kilos: 190, volumen: 1.4, guia: 'GD-9041', factura: '9041', estado: 'pendiente', ts: d }
-      ],
-
-      documentos: [],
-
-      incidencias: [
-        { id: uid('i'), producto: 'Aceite 5L caja x4', tipo: 'MAL_ESTADO', esperada: 4, entregada: 0, faltante: 4, motivo: 'Caja golpeada, envases con fuga', estado: 'REPORTADA', montoNota: 4 * PRECIO_UNIT_DEMO, tipoNota: 'CREDITO', repartidorId: 'r2', repartidor: 'M. Soto', patente: 'LPRT-44', guia: 'GD-8841', factura: '8841', cliente: 'Comercial Andes', ts: d - 60000 },
-        { id: uid('i'), producto: 'Harina 25kg', tipo: 'FALTANTE', esperada: 6, entregada: 0, faltante: 6, motivo: 'No salió de bodega', estado: 'REPORTADA', montoNota: 6 * PRECIO_UNIT_DEMO, tipoNota: 'CREDITO', repartidorId: 'r1', repartidor: 'J. Pérez', patente: 'KXYZ-12', guia: 'GD-8902', factura: '8902', cliente: 'Minimarket El Sol', ts: d - 180000 },
-        { id: uid('i'), producto: 'Bebida 1.5L six-pack', tipo: 'DESPACHO_INCOMPLETO', esperada: 30, entregada: 18, faltante: 12, motivo: 'Llegaron 18 de 30', estado: 'RECIBIDA_PLANTA', montoNota: 12 * PRECIO_UNIT_DEMO, tipoNota: 'CREDITO', repartidorId: 'r2', repartidor: 'M. Soto', patente: 'LPRT-44', guia: 'GD-8810', factura: '8810', cliente: 'Distrib. Norte Ltda', ts: d - 360000 }
-      ],
-
-      facturas: [
-        { id: uid('f'), folio: '8841', cliente: 'Comercial Andes', rut: '77.111.222-3', monto: 1190000, emision: d - 40 * DAY, vencimiento: d - 10 * DAY, pagada: false, estado: 'VENCIDA', diasVencido: 10 },
-        { id: uid('f'), folio: '8902', cliente: 'Minimarket El Sol', rut: '76.555.222-K', monto: 540000, emision: d - 20 * DAY, vencimiento: d + 10 * DAY, pagada: false, estado: 'PENDIENTE', diasVencido: 0 },
-        { id: uid('f'), folio: '8810', cliente: 'Distrib. Norte Ltda', rut: '77.999.888-1', monto: 320000, emision: d - 60 * DAY, vencimiento: d - 35 * DAY, pagada: true, estado: 'PAGADA', diasVencido: 0 },
-        { id: uid('f'), folio: '8915', cliente: 'Almacén Doña Rosa', rut: '76.333.444-5', monto: 410000, emision: d - 15 * DAY, vencimiento: d - 2 * DAY, pagada: false, estado: 'VENCIDA', diasVencido: 2 }
-      ],
-
-      pagos: [],
-      disputas: [],
-
-      alertas: [
-        { id: uid('a'), titulo: 'Rendición sospechosa', detalle: 'comprobante PDF con metadatos alterados', severidad: 'CRITICA', scoreIA: 0.91, estado: 'ABIERTA' },
-        { id: uid('a'), titulo: 'Depósito sin respaldo', detalle: '$340.000 sin respaldo en ERP ni guía', severidad: 'MEDIA', scoreIA: 0.74, estado: 'ABIERTA' },
-        { id: uid('a'), titulo: 'Cobro duplicado', detalle: 'factura 8841 conciliada 2 veces', severidad: 'ALTA', scoreIA: 0.69, estado: 'ABIERTA' }
-      ],
-
-      // ── Flota / camiones en ruta ──
-      vehiculos: [
-        { id: uid('v'), patente: 'KXYZ-12', conductor: 'J. Pérez', repartidorId: 'r1', tipo: 'Camión 3/4', ruta: 'Norte · R-04', estado: 'EN_RUTA', lat: -33.418, lng: -70.605, vel: 42, x: 18, y: 70, ts: now() },
-        { id: uid('v'), patente: 'LPRT-44', conductor: 'M. Soto', repartidorId: 'r2', tipo: 'Furgón', ruta: 'Centro · R-01', estado: 'DETENIDO', lat: -33.447, lng: -70.652, vel: 0, x: 52, y: 38, ts: now() },
-        { id: uid('v'), patente: 'TRSU-21', conductor: 'C. Rojas', repartidorId: 'r3', tipo: 'Camión', ruta: 'Sur · R-07', estado: 'EN_RUTA', lat: -33.512, lng: -70.611, vel: 28, x: 72, y: 62, ts: now() },
-        { id: uid('v'), patente: 'MNZA-08', conductor: 'L. Muñoz', repartidorId: 'r4', tipo: 'Van', ruta: 'Oriente · R-03', estado: 'EN_RUTA', lat: -33.405, lng: -70.555, vel: 35, x: 38, y: 48, ts: now() },
-        { id: uid('v'), patente: 'PNTE-09', conductor: 'F. Díaz', repartidorId: 'r5', tipo: 'Camión 3/4', ruta: 'Poniente · R-09', estado: 'EN_RUTA', lat: -33.460, lng: -70.700, vel: 31, x: 84, y: 30, ts: now() }
-      ],
-
-      // ── Conciliación bancaria: cartola banco (movimientos) vs libro/ERP ──
-      banco: [
-        { id: uid('b'), fecha: d - 1 * DAY, glosa: 'Transferencia Comercial Andes', monto: 1190000, ref: '8841', rut: '77.111.222-3', medio: 'TRANSFERENCIA', banco: 'Banco de Chile', conciliado: false, matchId: null },
-        { id: uid('b'), fecha: d - 1 * DAY, glosa: 'Webpay venta', monto: 540000, ref: '8902', rut: '76.555.222-K', medio: 'WEBPAY', banco: 'BCI', conciliado: false, matchId: null },
-        { id: uid('b'), fecha: d - 2 * DAY, glosa: 'Depósito en efectivo', monto: 340000, ref: '', medio: 'EFECTIVO', banco: 'BancoEstado', conciliado: false, matchId: null },
-        { id: uid('b'), fecha: d - 2 * DAY, glosa: 'Transferencia rendición R-03', monto: 295000, ref: 'R-03', medio: 'TRANSFERENCIA', banco: 'Santander', conciliado: false, matchId: null },
-        { id: uid('b'), fecha: d - 3 * DAY, glosa: 'Pago Minimarket El Sol', monto: 38000, ref: 'GUIA-2207', medio: 'TRANSFERENCIA', banco: 'Banco de Chile', conciliado: false, matchId: null }
-      ],
-      libro: [
-        { id: uid('l'), fecha: d - 1 * DAY, glosa: 'Factura 8841 Comercial Andes', monto: 1190000, ref: '8841', origen: 'ERP', conciliado: false, matchId: null },
-        { id: uid('l'), fecha: d - 1 * DAY, glosa: 'Factura 8902 Comercial Andes', monto: 540000, ref: '8902', origen: 'ERP', conciliado: false, matchId: null },
-        { id: uid('l'), fecha: d - 2 * DAY, glosa: 'Rendición C. Rojas R-03', monto: 295000, ref: 'R-03', origen: 'RENDICION', conciliado: false, matchId: null },
-        { id: uid('l'), fecha: d - 4 * DAY, glosa: 'Cheque Santander 0091', monto: 210000, ref: 'CHQ-0091', origen: 'ERP', conciliado: false, matchId: null },
-        { id: uid('l'), fecha: d - 3 * DAY, glosa: 'Guía 2207 Minimarket El Sol', monto: 38000, ref: 'GUIA-2207', origen: 'GUIA', conciliado: false, matchId: null }
-      ],
-
-      // ── Notas de crédito / débito (DTE 61 / 56) ──
-      notas: [
-        { id: uid('n'), folio: 'NC-1001', tipo: 'CREDITO', dte: 61, cliente: 'Comercial Andes', factura: '8841', monto: 18000, motivo: 'Aceite 5L · mal estado', estado: 'EMITIDA', incidenciaId: null, ts: d - 50000 },
-        { id: uid('n'), folio: 'NC-1002', tipo: 'CREDITO', dte: 61, cliente: 'Distrib. Norte Ltda', factura: '8810', monto: 54000, motivo: 'Despacho incompleto', estado: 'BORRADOR', incidenciaId: null, ts: d - 120000 }
-      ],
-
-      // ── Cierre contable (checklist tipo BlackLine) ──
-      cierre: [
-        { id: uid('t'), tarea: 'Ingesta de cartolas bancarias', responsable: 'Tesorería', estado: 'LISTO' },
-        { id: uid('t'), tarea: 'OCR y clasificación de documentos', responsable: 'Cuentas por pagar', estado: 'LISTO' },
-        { id: uid('t'), tarea: 'Matching / conciliación bancaria', responsable: 'Contabilidad', estado: 'EN_PROCESO' },
-        { id: uid('t'), tarea: 'Revisión de excepciones y diferencias', responsable: 'Contabilidad', estado: 'PENDIENTE' },
-        { id: uid('t'), tarea: 'Emisión de notas de crédito/débito', responsable: 'Facturación', estado: 'PENDIENTE' },
-        { id: uid('t'), tarea: 'Certificación y cierre del período', responsable: 'Gerencia', estado: 'PENDIENTE' }
-      ],
-
-      certificacion: null,
-
-      // ── Bitácora de auditoría (trazabilidad de cada operación) ──
-      audit: []
-    };
-  }
 
   function load() {
     try { var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
@@ -243,6 +136,18 @@
       if (d && d.pdf) { d.pdf = null; persist(); }
       return !!d;
     },
+    // Corrige la forma de pago / monto de una factura YA enviada (la que aparece en el cuadre).
+    // El cuadreDia se recalcula solo: si pasa a efectivo o crédito puro, deja de exigir comprobante.
+    corregirPago: function (clientReqId, pago) {
+      pago = pago || {};
+      var d = data.documentos.filter(function (x) { return x.clientReqId && x.clientReqId === clientReqId; })[0];
+      if (!d) return null;
+      if (pago.formaPago != null && pago.formaPago !== '') d.formaPago = String(pago.formaPago).toUpperCase();
+      if (pago.monto != null && pago.monto !== '' && !isNaN(Number(pago.monto))) { d.valorConIva = Number(pago.monto); d.monto = Number(pago.monto); }
+      if (pago.detalle !== undefined) d.pagoDetalle = pago.detalle || null;
+      d.pagoCorregido = true; d.pagoCorregidoTs = now();
+      persist(); return d;
+    },
     // Cuadre del día: efectivo a rendir + electrónico respaldado + lo que falta de comprobante.
     cuadreDia: function () {
       var hoy = new Date(); hoy.setHours(0, 0, 0, 0); var t0 = hoy.getTime();
@@ -306,7 +211,7 @@
       var pat = i.patente || (veh ? veh.patente : '');
       // Precio unitario REAL si el chofer lo ingresa; si no, estimación de referencia (marcada).
       var precioUnit = Number(i.precioUnit) || 0;
-      var precioUsado = precioUnit > 0 ? precioUnit : PRECIO_UNIT_DEMO;
+      var precioUsado = precioUnit > 0 ? precioUnit : PRECIO_UNIT_REF;
       var n = {
         id: uid('i'), producto: i.producto || 'Producto', tipo: i.tipo || 'MAL_ESTADO',
         esperada: Number(i.esperada) || 0, entregada: Number(i.entregada) || 0, faltante: faltante,

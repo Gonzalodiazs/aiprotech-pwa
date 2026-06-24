@@ -224,6 +224,31 @@
       });
     });
   }
+  // Corrige la forma de pago / monto de una factura YA enviada (PATCH por client_req_id, con cp_token).
+  // Best-effort: el cuadre local ya se corrigió antes (CP.corregirPago); esto refleja el cambio en la BD/oficina.
+  function corregirPagoRemoto(clientReqId, info) {
+    info = info || {};
+    if (!clientReqId) return Promise.reject(new Error('correccion sin id'));
+    var patch = {};
+    if (info.formaPago != null && info.formaPago !== '') patch.forma_pago = String(info.formaPago).toUpperCase();
+    if (info.monto != null && info.monto !== '' && !isNaN(Number(info.monto))) { patch.valor_con_iva = Number(info.monto); patch.monto = Number(info.monto); }
+    if (info.detalle !== undefined) patch.pago_detalle = info.detalle || null;
+    if (!Object.keys(patch).length) return Promise.resolve({ _ok: true, _noop: true });
+    var tk = authTok();
+    var hdrs = { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + (tk || KEY), Prefer: 'return=representation' };
+    var qs = URL + '/rest/v1/documentos?client_req_id=eq.' + encodeURIComponent(clientReqId);
+    return fetch(qs, { method: 'PATCH', headers: hdrs, body: JSON.stringify(patch) }).then(function (r) {
+      if (r.status === 401 || r.status === 403) throw new Error('correccion 401'); // token venció → re-login
+      if (r.status === 400 && patch.pago_detalle !== undefined) { // pago_detalle aún sin migrar → reintenta sin él
+        var p2 = {}; Object.keys(patch).forEach(function (k) { if (k !== 'pago_detalle') p2[k] = patch[k]; });
+        return fetch(qs, { method: 'PATCH', headers: hdrs, body: JSON.stringify(p2) })
+          .then(function (r2) { if (!r2.ok) throw new Error('correccion ' + r2.status); return r2.json(); })
+          .then(function (a2) { if (!Array.isArray(a2) || !a2.length) throw new Error('correccion 0'); return { _ok: true }; });
+      }
+      if (!r.ok) throw new Error('correccion ' + r.status);
+      return r.json().then(function (a) { if (!Array.isArray(a) || !a.length) throw new Error('correccion 0'); return { _ok: true }; });
+    });
+  }
   var CQKEY = 'cp_cola_comprobantes';
   function cqGet() { try { return JSON.parse(localStorage.getItem(CQKEY) || '[]'); } catch (e) { return []; } }
   function cqSet(a) { try { localStorage.setItem(CQKEY, JSON.stringify(a)); return true; } catch (e) { return false; } }
@@ -270,6 +295,7 @@
     listDocs: listDocs, marcarConciliado: marcarConciliado, extraerFactura: extraerFactura,
     sincronizarCola: sincronizarCola, pendientes: pendientes, bloqueados: bloqueados,
     attachComprobante: attachComprobante, attachComprobanteSeguro: attachComprobanteSeguro,
+    corregirPagoRemoto: corregirPagoRemoto,
     sincronizarComprobantes: sincronizarComprobantes, pendientesComprobantes: pendientesComprobantes,
     sincronizarTodo: _sincronizarTodo,
     cerrarEntrega: cerrarEntrega, sincronizarEntregas: sincronizarEntregas };
