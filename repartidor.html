@@ -594,6 +594,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <span id="cierreAlTxt">—</span>
     </div>
     <div id="cierreResumen" style="background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px;margin-bottom:12px"></div>
+    <button class="btn btn-ghost" style="width:100%;min-height:46px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openArqueo()"><span style="font-size:15px">🔒</span> Arqueo de caja <span style="font-family:var(--mono);font-size:8.5px;font-weight:700;background:rgba(91,85,192,.14);color:var(--violet);padding:2px 7px;border-radius:20px;letter-spacing:.05em">PREMIUM</span></button>
     <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin-bottom:6px">FIRMA DEL RESPONSABLE (opcional)</div>
     <canvas id="cierreSig" style="width:100%;height:140px;background:var(--bg);border:1px dashed var(--line-2);border-radius:14px;touch-action:none;display:block"></canvas>
     <button class="mini-btn" style="margin-top:7px" onclick="clearCierreSig()">Borrar firma</button>
@@ -623,6 +624,30 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
     <div class="btn-row" style="margin-top:12px">
       <button class="btn btn-ghost" onclick="closeFallida()">Cancelar</button>
       <button class="btn btn-primary" style="background:var(--red)" onclick="confirmarFallida()">Confirmar no entregada ✓</button>
+    </div>
+  </div>
+  <!-- Sheet: Arqueo de caja (PREMIUM · bloqueado por defecto, propuesta de valor) -->
+  <div class="sheet-bg" id="arqueoBg" onclick="closeArqueo()"></div>
+  <div class="sheet" id="arqueoSheet">
+    <div class="handle"></div>
+    <h2>Arqueo de caja</h2>
+    <div class="sub">Cuenta tu efectivo y compáralo con lo esperado</div>
+    <div id="arqueoBody" style="position:relative;min-height:230px">
+      <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin:6px 0 8px">BILLETES Y MONEDAS · cantidad de cada uno</div>
+      <div id="arqueoGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
+      <div id="arqueoTotales" style="margin-top:12px;background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px"></div>
+      <!-- Overlay de bloqueo premium (cubre el cuerpo) -->
+      <div id="arqueoLock" style="display:none;position:absolute;inset:-8px;background:rgba(251,249,244,.92);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border-radius:18px;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 22px">
+        <div style="font-size:42px;margin-bottom:8px">🔒</div>
+        <div style="font-family:var(--display);font-size:21px;font-weight:600;margin-bottom:8px">Arqueo de caja</div>
+        <div style="font-size:12.5px;color:var(--ink-dim);line-height:1.55;max-width:300px">Cuenta tu efectivo por billete y moneda; AIPROTECH calcula el total y detecta <b>faltante o sobrante al instante</b>, antes de entregar la caja en planta.</div>
+        <div style="margin-top:15px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--violet);background:rgba(91,85,192,.1);border:1px solid rgba(91,85,192,.25);border-radius:20px;padding:7px 13px">PROPUESTA DE VALOR AIPROTECH · PRÓXIMAMENTE</div>
+        <button class="btn btn-ghost" style="margin-top:16px;min-height:44px;padding:0 22px" onclick="closeArqueo()">Entendido</button>
+      </div>
+    </div>
+    <div class="btn-row" id="arqueoActions" style="margin-top:12px;display:none">
+      <button class="btn btn-ghost" onclick="closeArqueo()">Cerrar</button>
+      <button class="btn btn-primary" onclick="confirmarArqueo()">Confirmar arqueo ✓</button>
     </div>
   </div>
   <div class="toast" id="toast">✓ Entrega registrada con firma</div>
@@ -941,6 +966,47 @@ function confirmarFallida(){
   closeFallida();
   try{ renderCuadre(); renderMiDia(); }catch(e){}
   cerrarTrasEnvio('🚫 Factura marcada como NO entregada · '+motivo, 'warn');
+}
+// ───────── Arqueo de caja (PREMIUM · propuesta de valor; bloqueado por defecto con candado) ─────────
+var DENOMS=[20000,10000,5000,2000,1000,500,100,50,10];
+// Desbloqueo: localStorage 'aiprotech_premium_arqueo'='1' (para demo/venta sin recompilar).
+function arqueoDesbloqueado(){ try{ return localStorage.getItem('aiprotech_premium_arqueo')==='1'; }catch(e){ return false; } }
+function openArqueo(){
+  var locked=!arqueoDesbloqueado();
+  var lock=document.getElementById('arqueoLock'), act=document.getElementById('arqueoActions');
+  if(lock) lock.style.display=locked?'flex':'none';
+  if(act) act.style.display=locked?'none':'flex';
+  if(!locked) renderArqueo();
+  document.getElementById('arqueoBg').classList.add('open'); document.getElementById('arqueoSheet').classList.add('open');
+}
+function closeArqueo(){ var b=document.getElementById('arqueoBg'),s=document.getElementById('arqueoSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); }
+function renderArqueo(){
+  var grid=document.getElementById('arqueoGrid'); if(!grid) return;
+  grid.innerHTML=DENOMS.map(function(d){
+    return '<div style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:7px 9px"><span style="flex:1;font-family:var(--mono);font-size:12px;color:var(--ink-dim)">$'+d.toLocaleString('es-CL')+'</span><input type="number" inputmode="numeric" min="0" data-denom="'+d+'" oninput="recalcArqueo()" placeholder="0" style="width:54px;text-align:center;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:7px;font-family:var(--mono);font-size:13px;color:var(--ink);outline:none"></div>';
+  }).join('');
+  recalcArqueo();
+}
+function recalcArqueo(){
+  var total=0;
+  document.querySelectorAll('#arqueoGrid input[data-denom]').forEach(function(inp){ total += (parseInt(inp.value,10)||0)*parseInt(inp.getAttribute('data-denom'),10); });
+  var esperado=(window.CP&&CP.cuadreDia)?CP.cuadreDia().efectivo:0, dif=total-esperado;
+  var box=document.getElementById('arqueoTotales'); if(!box) return;
+  var difTxt, difColor;
+  if(dif===0){ difTxt='✓ Calza exacto'; difColor='var(--green)'; }
+  else if(dif<0){ difTxt='⚠ Faltan '+CP.clp(-dif); difColor='var(--red)'; }
+  else { difTxt='⚠ Sobran '+CP.clp(dif); difColor='var(--amber)'; }
+  box.innerHTML='<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-dim)">Contado</span><span style="font-family:var(--mono);font-weight:700">'+CP.clp(total)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-dim)">Esperado (efectivo a rendir)</span><span style="font-family:var(--mono)">'+CP.clp(esperado)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0 0;margin-top:4px;border-top:1px solid var(--line-2);font-weight:800;color:'+difColor+'"><span>Diferencia</span><span style="font-family:var(--mono)">'+difTxt+'</span></div>';
+}
+function confirmarArqueo(){
+  var total=0;
+  document.querySelectorAll('#arqueoGrid input[data-denom]').forEach(function(inp){ total += (parseInt(inp.value,10)||0)*parseInt(inp.getAttribute('data-denom'),10); });
+  var esperado=(window.CP&&CP.cuadreDia)?CP.cuadreDia().efectivo:0, dif=total-esperado;
+  try{ if(window.CP&&CP.registrarEvento) CP.registrarEvento('Arqueo de caja','Cuadre','Contado '+CP.clp(total)+' · esperado '+CP.clp(esperado)+' · dif '+CP.clp(dif)); }catch(e){}
+  closeArqueo();
+  showToast(dif===0?'✓ Arqueo: la caja calza exacto':((dif<0?'⚠ Arqueo: faltan ':'⚠ Arqueo: sobran ')+CP.clp(Math.abs(dif))), dif===0?'ok':'warn');
 }
 // Abre la firma por ÍNDICE de la entrega (no se interpola el id en el HTML).
 function openSheetByIdx(el){ var i=parseInt(el&&el.getAttribute('data-eidx'),10); var e=(entregasPlanta||[])[i]; if(e&&e.id!=null) openSheet(e.id); }
@@ -1769,7 +1835,7 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 })();
 // ── Cerrar paneles inferiores: botón X (arriba-derecha) + arrastrar hacia abajo (swipe-down) ──
 (function(){
-  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach'],['corrSheet','closeCorr'],['cierreSheet','closeCierre'],['fallidaSheet','closeFallida']];
+  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach'],['corrSheet','closeCorr'],['cierreSheet','closeCierre'],['fallidaSheet','closeFallida'],['arqueoSheet','closeArqueo']];
   sheets.forEach(function(s){
     var sh=document.getElementById(s[0]); if(!sh) return;
     var _cerrando=false;
