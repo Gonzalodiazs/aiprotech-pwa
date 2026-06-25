@@ -394,6 +394,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
         <button class="btn btn-ghost" style="flex:1;min-height:48px;font-size:12.5px" onclick="corregirDatos()">✎ Corregir datos</button>
         <button class="btn btn-primary" style="flex:2;min-height:48px" onclick="enviarAPlanta()" id="btnEnviar">Enviar a planta ✓</button>
       </div>
+      <button class="btn btn-ghost" style="width:100%;min-height:42px;font-size:12px;margin-top:8px;color:var(--red);border-color:rgba(200,64,46,.32)" onclick="openFallida()">🚫 No se pudo entregar (rechazo / otro motivo)</button>
     </div>
     <div class="scan-info"><div class="t" id="scanTitle">Escanea tu factura</div><div class="d" id="scanDesc">Toca “Tomar foto” y captura la factura completa</div></div>
     <div style="padding:0 22px 10px;display:flex;gap:10px">
@@ -601,6 +602,29 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <button class="btn btn-primary" onclick="generarRendicion()">Generar resumen (PDF) ✓</button>
     </div>
   </div>
+  <!-- Sheet: factura NO entregada (rechazo / otro motivo del rubro) -->
+  <div class="sheet-bg" id="fallidaBg" onclick="closeFallida()"></div>
+  <div class="sheet" id="fallidaSheet">
+    <div class="handle"></div>
+    <h2>Factura no entregada</h2>
+    <div class="sub" id="fallidaInfo">¿Por qué no se pudo entregar / cobrar?</div>
+    <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin:4px 0 8px">MOTIVO</div>
+    <div id="fallidaBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
+      <button class="pago-sub" data-mot="Rechazo total" onclick="selMotivo(this)">🚫 Rechazo total</button>
+      <button class="pago-sub" data-mot="Cliente ausente / local cerrado" onclick="selMotivo(this)">🚪 Cliente ausente</button>
+      <button class="pago-sub" data-mot="Sin dinero / no pudo pagar" onclick="selMotivo(this)">💸 Sin dinero</button>
+      <button class="pago-sub" data-mot="Dirección no encontrada" onclick="selMotivo(this)">📍 Dirección errónea</button>
+      <button class="pago-sub" data-mot="Mercadería dañada / mal estado" onclick="selMotivo(this)">📦 Mercadería dañada</button>
+      <button class="pago-sub" data-mot="Producto vencido / fecha corta" onclick="selMotivo(this)">📅 Vencido / fecha corta</button>
+      <button class="pago-sub" data-mot="Fuera de horario de recepción" onclick="selMotivo(this)">⏰ Fuera de horario</button>
+      <button class="pago-sub" data-mot="__OTRO__" onclick="selMotivo(this)">✏️ Otro</button>
+    </div>
+    <input id="fallidaOtro" placeholder="Escribe el motivo…" class="minp" style="width:100%;box-sizing:border-box;display:none">
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-ghost" onclick="closeFallida()">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--red)" onclick="confirmarFallida()">Confirmar no entregada ✓</button>
+    </div>
+  </div>
   <div class="toast" id="toast">✓ Entrega registrada con firma</div>
   <!-- Tabbar -->
   <div class="tabbar">
@@ -664,7 +688,7 @@ function renderCuadre(){
   var c=CP.cuadreDia();
   var setT=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
   setT('cqEfectivo', CP.clp(c.efectivo)); setT('cqElec', CP.clp(c.electronicoOk)); setT('cqPend', CP.clp(c.pendienteMonto));
-  setT('cqN', c.n+' factura'+(c.n===1?'':'s')+' hoy · facturado '+CP.clp(c.totalFacturado)+((c.aCobrarDespues>0)?(' · 🕓 '+CP.clp(c.aCobrarDespues)+' a cobrar después (crédito)'):''));
+  setT('cqN', c.n+' factura'+(c.n===1?'':'s')+' hoy · facturado '+CP.clp(c.totalFacturado)+((c.aCobrarDespues>0)?(' · 🕓 '+CP.clp(c.aCobrarDespues)+' a cobrar después (crédito)'):'')+((c.fallidasN>0)?(' · 🚫 '+c.fallidasN+' no entregada'+(c.fallidasN===1?'':'s')):''));
   var arr=c.pendientesArrastre||[];
   var pendTot=c.pendientes.length+arr.length;
   var al=document.getElementById('cqAlerta'), txt=document.getElementById('cqAlTxt');
@@ -672,7 +696,7 @@ function renderCuadre(){
   var bdg=document.getElementById('rendirBadge'); if(bdg){ if(pendTot){ bdg.style.display='flex'; bdg.textContent=pendTot; } else bdg.style.display='none'; }
   var box=document.getElementById('cuadreBody'); if(!box) return;
   var lista=arr.concat(c.docs);
-  if(!lista.length){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:10px 0">Aún no escaneas facturas hoy. Usa <b>Escanear factura</b>.</div>'; return; }
+  if(!lista.length && !(c.fallidasN>0)){ box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:10px 0">Aún no escaneas facturas hoy. Usa <b>Escanear factura</b>.</div>'; return; }
   box.innerHTML=lista.map(function(d,_i){
     var esArr=(_i < arr.length); // las facturas de días anteriores van primero
     var fp=(d.formaPago||'—'), tot=Number(d.valorConIva)||Number(d.monto)||0;
@@ -687,6 +711,12 @@ function renderCuadre(){
     var corr=d.clientReqId?'<button class="cq-corr" title="Corregir forma de pago / monto" data-cid="'+escEnt(d.clientReqId)+'" data-fp="'+escEnt(fp)+'" data-mt="'+tot+'" data-fol="'+escEnt(d.folio||'—')+'" onclick="openCorrBtn(this)">✏️</button>':'';
     return '<div class="cq-row"><div class="cq-main"><div class="cq-fol">'+escEnt(d.folio||'—')+'</div><div class="cq-meta">'+marca+escEnt(fp)+' · '+CP.clp(tot)+'</div></div><div style="display:flex;align-items:center;gap:2px">'+corr+estado+'</div></div>';
   }).join('');
+  // Facturas NO entregadas (rechazo/otro): se listan aparte, NO cuentan como pago.
+  if(c.fallidasN>0){
+    box.innerHTML += '<div style="margin-top:10px;font-size:9.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em">🚫 NO ENTREGADAS HOY ('+c.fallidasN+')</div>' + (c.fallidas||[]).map(function(d){
+      return '<div class="cq-row" style="opacity:.92"><div class="cq-main"><div class="cq-fol">'+escEnt(d.folio||'—')+'</div><div class="cq-meta" style="color:var(--red)">'+escEnt(d.motivoFallida||'no entregada')+'</div></div><span class="cq-warn" style="background:rgba(200,64,46,.1);color:var(--red)">🚫</span></div>';
+    }).join('');
+  }
 }
 // Panel "Mi día": el repartidor ve claro su proceso (ruta → facturas → cuadre) y qué le falta.
 function renderMiDia(){
@@ -878,6 +908,39 @@ function generarRendicion(){
   try{ doc.save(fname); }catch(e){ try{ window.open(doc.output('bloburl'),'_blank'); }catch(e2){ try{ window.open(doc.output('datauristring'),'_blank'); }catch(e3){} } }
   closeCierre();
   showToast('✓ Resumen de rendición generado');
+}
+// ───────── Factura NO entregada (rechazo / otro motivo del rubro) ─────────
+var _fallidaMotivo=null;
+function openFallida(){
+  if(!docPendiente){ showToast('Escanea la factura primero'); return; }
+  _fallidaMotivo=null;
+  var btns=document.querySelectorAll('#fallidaBtns .pago-sub'); for(var i=0;i<btns.length;i++) btns[i].classList.remove('on');
+  var ot=document.getElementById('fallidaOtro'); if(ot){ ot.value=''; ot.style.display='none'; }
+  var inf=document.getElementById('fallidaInfo'); if(inf) inf.textContent='Factura '+((docPendiente&&docPendiente.folio)||'—')+' · ¿por qué no se entregó?';
+  document.getElementById('fallidaBg').classList.add('open'); document.getElementById('fallidaSheet').classList.add('open');
+}
+function closeFallida(){ var b=document.getElementById('fallidaBg'),s=document.getElementById('fallidaSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); }
+function selMotivo(el){
+  var btns=document.querySelectorAll('#fallidaBtns .pago-sub'); for(var i=0;i<btns.length;i++) btns[i].classList.remove('on'); el.classList.add('on');
+  var mot=el.getAttribute('data-mot'); var ot=document.getElementById('fallidaOtro');
+  if(mot==='__OTRO__'){ _fallidaMotivo=null; if(ot){ ot.style.display='block'; ot.focus(); } }
+  else { _fallidaMotivo=mot; if(ot){ ot.style.display='none'; } }
+}
+function confirmarFallida(){
+  if(!docPendiente){ closeFallida(); return; }
+  var motivo=_fallidaMotivo || (document.getElementById('fallidaOtro').value||'').trim();
+  if(!motivo){ showToast('Elige o escribe el motivo'); return; }
+  var crid='frq_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+  var doc=Object.assign({}, docPendiente, {
+    estado:'FALLIDA', fallida:true, motivoFallida:motivo, glosa:'NO ENTREGADA: '+motivo,
+    formaPago:'', pagoDetalle:null, clientReqId:crid,
+    fuente: docPendiente.fuente || 'IA de visión (Gemini)'
+  });
+  try{ if(window.CP&&CP.addDocumento) CP.addDocumento(doc); }catch(e){}        // registro local
+  try{ if(window.CPSupabase&&CPSupabase.insertDocSeguro) CPSupabase.insertDocSeguro(doc); }catch(e){} // a planta (cola offline idempotente)
+  closeFallida();
+  try{ renderCuadre(); renderMiDia(); }catch(e){}
+  cerrarTrasEnvio('🚫 Factura marcada como NO entregada · '+motivo, 'warn');
 }
 // Abre la firma por ÍNDICE de la entrega (no se interpola el id en el HTML).
 function openSheetByIdx(el){ var i=parseInt(el&&el.getAttribute('data-eidx'),10); var e=(entregasPlanta||[])[i]; if(e&&e.id!=null) openSheet(e.id); }
@@ -1706,7 +1769,7 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 })();
 // ── Cerrar paneles inferiores: botón X (arriba-derecha) + arrastrar hacia abajo (swipe-down) ──
 (function(){
-  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach'],['corrSheet','closeCorr'],['cierreSheet','closeCierre']];
+  var sheets=[['sheet','closeSheet'],['bioSheet','closeBio'],['incSheet','closeInc'],['neSheet','closeNuevaEntrega'],['perfilSheet','closePerfil'],['ubicSheet','closeUbic'],['cpAttSheet','closeCpAttach'],['corrSheet','closeCorr'],['cierreSheet','closeCierre'],['fallidaSheet','closeFallida']];
   sheets.forEach(function(s){
     var sh=document.getElementById(s[0]); if(!sh) return;
     var _cerrando=false;

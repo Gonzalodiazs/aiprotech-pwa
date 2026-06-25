@@ -111,6 +111,7 @@
         pagoReferencia: doc.pagoReferencia || '',
         pagoRutOrigen: doc.pagoRutOrigen || '',
         pagoDetalle: doc.pagoDetalle || null,
+        motivoFallida: doc.motivoFallida || '',   // si la factura no se entregó (rechazo/otro)
         estado: doc.estado || 'RECIBIDO_PLANTA',  // llega directo a planta
         ts: now()
       };
@@ -154,6 +155,7 @@
       var docs = data.documentos.filter(function (d) { return (d.ts || 0) >= t0; });
       var efectivo = 0, electronicoOk = 0, pendienteMonto = 0, aCobrarDespues = 0, pendientes = [], porPago = {};
       docs.forEach(function (d) {
+        if ((d.estado || '') === 'FALLIDA') return; // factura NO entregada (rechazo/otro): no es venta, no entra al cuadre de pagos
         var fp = (d.formaPago || '').toUpperCase();
         var tot = Number(d.valorConIva) || Number(d.monto) || 0;
         porPago[fp || '—'] = (porPago[fp || '—'] || 0) + tot;
@@ -177,6 +179,7 @@
       var pendientesArrastre = [], arrastreMonto = 0;
       data.documentos.forEach(function (d) {
         if ((d.ts || 0) >= t0) return;
+        if ((d.estado || '') === 'FALLIDA') return; // no entregada: fuera del arrastre
         var fp = (d.formaPago || '').toUpperCase();
         if (!fp || fp === 'EFECTIVO') return;
         if (fp.indexOf('CREDITO') >= 0 && fp.indexOf('MIXTO') < 0) return; // crédito puro no exige comprobante
@@ -188,13 +191,16 @@
         var credDet = (det && det.CREDITO) ? Number(det.CREDITO) : 0;
         if (tot - efDet - credDet > 0) { arrastreMonto += (tot - efDet - credDet); pendientesArrastre.push(d); }
       });
+      var fallidas = docs.filter(function (d) { return (d.estado || '') === 'FALLIDA'; });
+      var vendidas = docs.filter(function (d) { return (d.estado || '') !== 'FALLIDA'; });
       return {
-        n: docs.length,
-        totalFacturado: docs.reduce(function (s, d) { return s + (Number(d.valorConIva) || Number(d.monto) || 0); }, 0),
+        n: vendidas.length,
+        totalFacturado: vendidas.reduce(function (s, d) { return s + (Number(d.valorConIva) || Number(d.monto) || 0); }, 0),
         efectivo: efectivo, electronicoOk: electronicoOk, pendienteMonto: pendienteMonto, aCobrarDespues: aCobrarDespues,
         pendientesArrastre: pendientesArrastre, arrastreMonto: arrastreMonto, arrastreN: pendientesArrastre.length,
         pendientes: pendientes, porPago: porPago,
-        docs: docs.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+        fallidas: fallidas, fallidasN: fallidas.length,
+        docs: vendidas.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
       };
     },
 

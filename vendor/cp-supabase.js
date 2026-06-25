@@ -77,6 +77,8 @@
         forma_pago: (doc.formaPago || '').toUpperCase(), firmante: doc.firmante || '',
         repartidor: doc.repartidor || perfil().nombre || '', patente: doc.patente || perfil().patente || '', fuente: doc.fuente || '',
         gps: doc.gps || null, pdf_url: pdf_url, empresa_id: doc.empresaId || perfil().empresa_id || null,
+        // estado: normalmente lo pone la BD (RECIBIDO_PLANTA); se manda solo si viene marcado (ej. FALLIDA = no entregada)
+        estado: doc.estado || undefined,
         // Validación de recepción: la factura física trae el timbre del proveedor + la firma del cliente
         timbre_proveedor: !!doc.timbreProveedor, firma_receptor: !!doc.firmaReceptor, visada: !!doc.visada
       };
