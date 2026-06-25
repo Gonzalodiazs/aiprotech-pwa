@@ -167,6 +167,15 @@ body{background:var(--bg);font-family:var(--sans);min-height:100vh;overflow:hidd
 button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
 /* El panel nunca debe pasar de la pantalla (así la X de arriba siempre queda visible y alcanzable) */
 .sheet{max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* Vista a pantalla completa (Entregas / Rendir): cubre el contenido (z 58, bajo las hojas 60/70) con header + X */
+.fullview{position:absolute;inset:0;background:var(--bg);z-index:58;display:none;flex-direction:column;overflow:hidden}
+.fullview.open{display:flex}
+.fullview-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 16px) 18px 12px;border-bottom:1px solid var(--line);flex-shrink:0;background:var(--panel)}
+.fullview-title{font-family:var(--display);font-size:19px;font-weight:600;flex:1;letter-spacing:-.01em;line-height:1.1}
+.fullview-x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-dim);font-size:17px;cursor:pointer;display:grid;place-items:center;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.fullview-x:active{transform:scale(.9);background:var(--line)}
+.fullview-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 18px calc(88px + env(safe-area-inset-bottom))}
+.fullview-body>.card{margin:0}
 </style>
 </head>
 <body>
@@ -651,6 +660,14 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
     </div>
   </div>
   <div class="toast" id="toast">✓ Entrega registrada con firma</div>
+  <!-- Vista a pantalla completa para Entregas / Rendir (con X para cerrar) -->
+  <div id="fullView" class="fullview">
+    <div class="fullview-head">
+      <span id="fullViewTitle" class="fullview-title">…</span>
+      <button class="fullview-x" onclick="salirFull()" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div id="fullViewBody" class="fullview-body"></div>
+  </div>
   <!-- Tabbar -->
   <div class="tabbar">
     <div class="tab active" onclick="setTab('inicio',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Inicio</div>
@@ -1115,10 +1132,33 @@ function closeSheet(){document.getElementById('sheetBg').classList.remove('open'
 function closeAllSheets(){ var els=document.querySelectorAll('.sheet.open, .sheet-bg.open'); for(var i=0;i<els.length;i++) els[i].classList.remove('open'); }
 function setTab(t, el){ var tabs=document.querySelectorAll('.tabbar .tab'); for(var i=0;i<tabs.length;i++) tabs[i].classList.remove('active'); if(el) el.classList.add('active');
   closeAllSheets(); // cualquier toque en la barra inferior cierra overlays abiertos → nunca se traba
+  if(t!=='entregas' && t!=='rendir'){ try{ closeFull(); }catch(e){} } // salir de la vista a pantalla completa si vamos a otra parte
   if(t==='inicio'){ var hb=document.getElementById('homeBody'); if(hb){ if(hb.scrollTo){ hb.scrollTo({top:0,behavior:'smooth'}); } else { hb.scrollTop=0; } } else { window.scrollTo({top:0,behavior:'smooth'}); } }
-  else if(t==='entregas'){ var c=document.getElementById('cardEntregas'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
-  else if(t==='rendir'){ try{ renderCuadre(); }catch(e){} var c=document.getElementById('cardCuadre'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
+  else if(t==='entregas'){ try{ cargarMisEntregas(); }catch(e){} openFull('cardEntregas','Mi ruta de hoy'); }
+  else if(t==='rendir'){ try{ renderCuadre(); }catch(e){} openFull('cardCuadre','Rendir · Cuadre del día'); }
   else if(t==='perfil'){ openPerfil(); } }
+// ── Vista a pantalla completa (Entregas / Rendir): mueve la tarjeta a un overlay con header + X y la restaura al cerrar ──
+var _fullCard=null, _fullPH=null;
+function openFull(cardId, title){
+  var card=document.getElementById(cardId); if(!card) return;
+  if(_fullCard && _fullCard!==card){ closeFull(); }   // si había otra vista abierta, restáurala primero
+  if(_fullCard!==card){
+    _fullCard=card; _fullPH=document.createComment('fv'); card.parentNode.insertBefore(_fullPH, card);
+    document.getElementById('fullViewBody').appendChild(card);
+  }
+  var ti=document.getElementById('fullViewTitle'); if(ti) ti.textContent=title||'';
+  var fb=document.getElementById('fullViewBody'); if(fb) fb.scrollTop=0;
+  document.getElementById('fullView').classList.add('open');
+}
+function closeFull(){   // restaura la tarjeta a su lugar en el inicio y oculta la vista
+  if(_fullCard && _fullPH && _fullPH.parentNode){ _fullPH.parentNode.insertBefore(_fullCard, _fullPH); _fullPH.parentNode.removeChild(_fullPH); }
+  _fullCard=null; _fullPH=null;
+  var fv=document.getElementById('fullView'); if(fv) fv.classList.remove('open');
+}
+function salirFull(){   // X de la vista full → cerrar y volver a Inicio
+  closeFull();
+  var tabs=document.querySelectorAll('.tabbar .tab'); for(var i=0;i<tabs.length;i++) tabs[i].classList.remove('active'); if(tabs[0]) tabs[0].classList.add('active');
+}
 function openPerfil(){ var p={}; try{p=JSON.parse(localStorage.getItem('cp_perfil')||'{}');}catch(e){}
   document.getElementById('pfNombre').textContent=p.nombre||'Conductor';
   document.getElementById('pfInicial').textContent=((p.nombre||'C').trim()[0]||'C').toUpperCase();
@@ -1816,8 +1856,8 @@ function closeScan(){ detenerVivo(); document.getElementById('scanner').classLis
 })();
 // ── Botón físico Atrás de Android (+ tecla Escape): cierra overlays/escáner, no "traba" ──
 (function(){
-  function hayAbierto(){ var sc=document.getElementById('scanner'); return !!document.querySelector('.sheet.open, .sheet-bg.open') || (sc && sc.classList.contains('open')); }
-  function cerrarTodo(){ try{ if(typeof closeAllSheets==='function') closeAllSheets(); }catch(e){} try{ if(typeof closeBio==='function') closeBio(); }catch(e){} try{ var sc=document.getElementById('scanner'); if(sc && sc.classList.contains('open') && typeof closeScan==='function') closeScan(); }catch(e){} }
+  function hayAbierto(){ var sc=document.getElementById('scanner'), fv=document.getElementById('fullView'); return !!document.querySelector('.sheet.open, .sheet-bg.open') || (sc && sc.classList.contains('open')) || (fv && fv.classList.contains('open')); }
+  function cerrarTodo(){ try{ if(typeof closeAllSheets==='function') closeAllSheets(); }catch(e){} try{ if(typeof closeBio==='function') closeBio(); }catch(e){} try{ var sc=document.getElementById('scanner'); if(sc && sc.classList.contains('open') && typeof closeScan==='function') closeScan(); }catch(e){} try{ var fv=document.getElementById('fullView'); if(fv && fv.classList.contains('open') && typeof salirFull==='function') salirFull(); }catch(e){} }
   var _backExit=0;
   function onBack(){
     if(hayAbierto()){ cerrarTodo(); return; }   // 1º atrás: cierra el panel/escáner abierto
