@@ -134,8 +134,9 @@
   function eqGet() { try { return JSON.parse(localStorage.getItem(EQKEY) || '[]'); } catch (e) { return []; } }
   function eqSet(a) { try { localStorage.setItem(EQKEY, JSON.stringify(a)); } catch (e) {} }
   function patchEntrega(id) {
+    var tk = authTok(); // cierre con cp_token (authenticated) → la RLS deja cerrar solo las entregas de TU patente
     return fetch(URL + '/rest/v1/entregas?id=eq.' + encodeURIComponent(id), {
-      method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, H()),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + (tk || KEY) },
       body: JSON.stringify({ estado: 'entregada' })
     }).then(function (r) { if (!r.ok) throw new Error('patch-entrega ' + r.status); return true; });
   }

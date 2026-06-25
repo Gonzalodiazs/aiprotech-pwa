@@ -1048,7 +1048,9 @@ function cargarMisEntregas(){
   if(pat) conds.push('patente.eq.'+encodeURIComponent(pat));
   if(nom) conds.push('repartidor.ilike.*'+encodeURIComponent(nom)+'*');
   var filtro=(conds.length>1)?('or=('+conds.join(',')+')'):(pat?('patente=eq.'+encodeURIComponent(pat)):('repartidor=ilike.*'+encodeURIComponent(nom)+'*'));
-  fetch(CPAuth.SB_URL+'/rest/v1/entregas?'+filtro+'&fecha=eq.'+hoy+'&order=orden.asc.nullslast&select=*',{headers:{apikey:CPAuth.ANON,Authorization:'Bearer '+CPAuth.ANON}})
+  // La ruta se lee con el cp_token (authenticated) → la RLS filtra por patente/rol. La anon key NO debe leer rutas ajenas.
+  var _tk=(CPAuth.token && CPAuth.token())||'';
+  fetch(CPAuth.SB_URL+'/rest/v1/entregas?'+filtro+'&fecha=eq.'+hoy+'&order=orden.asc.nullslast&select=*',{headers:{apikey:CPAuth.ANON,Authorization:'Bearer '+(_tk||CPAuth.ANON)}})
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(es){ es=Array.isArray(es)?es:[];
     entregasPlanta=es; try{ renderMiDia(); }catch(e){} // cache + actualiza el panel "Mi día" con la ruta real
     var ent=es.filter(function(e){return e.estado==='entregada';}).length;
@@ -1071,6 +1073,7 @@ function cargarMisEntregas(){
     var msg='No se pudo cargar tu ruta (revisa la conexión).';
     if(m.indexOf('HTTP 401')>=0) msg='Tu sesión expiró. Vuelve a iniciar sesión.';
     else if(m.indexOf('HTTP 403')>=0) msg='Sin permisos para esta patente. Avisa a planta.';
+    else if(m.indexOf('HTTP 404')>=0) msg='Planta aún no habilitó la ruta del día.';
     else if(m.indexOf('HTTP 5')>=0) msg='El servidor de planta no respondió. Reintenta en un momento.';
     box.innerHTML='<div style="color:var(--ink-faint);font-size:12px;padding:12px 0">'+msg+' <button onclick="cargarMisEntregas()" style="margin-left:6px;background:rgba(46,102,201,.12);color:var(--blue);border:1px solid rgba(46,102,201,.3);border-radius:8px;padding:4px 10px;font-family:var(--sans);font-size:11px;font-weight:600;cursor:pointer">↻ Reintentar</button></div>';
   });
@@ -1225,7 +1228,8 @@ function confirmSig(){
   var firmaData = document.getElementById('sigPad').toDataURL('image/png');
   var factura = (document.getElementById('firmaFactura').value||'').trim();
   closeSheet();
-  if(window.CP){ var e=CP.firmarEntrega(selEntregaId, 'DIGITAL', firmaData, receptor, factura); renderHome(); generarActa(e, receptor, factura, firmaData, 'DIGITAL'); }
+  // Acta: si la entrega vino de planta (remota), úsala — firmarEntrega busca en el store LOCAL y devolvería null → acta sin cliente.
+  if(window.CP){ var e=CP.firmarEntrega(selEntregaId, 'DIGITAL', firmaData, receptor, factura); renderHome(); generarActa(selEntregaRemota||e, receptor, factura, firmaData, 'DIGITAL'); }
   cerrarEntregaRemota(receptor, 'DIGITAL');
   document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value='';
   showToast('✓ Recepción conforme · entrega registrada');
@@ -1958,7 +1962,7 @@ function renderBio(res){
       ? ('match '+(res.scoreMatch*100).toFixed(0)+'% · liveness '+(res.livenessScore*100).toFixed(0)+'%')
       : (new Date().toLocaleString('es-CL') + (res.lat!=null ? (' · GPS '+Number(res.lat).toFixed(4)+','+Number(res.lng).toFixed(4)) : ''));
     el.innerHTML = '<span style="color:var(--green)">✓ '+res.motivo+'</span><br><span style="color:var(--ink-dim);font-size:11px">'+detalle+'</span>';
-    _bioTimers.push(setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'BIOMETRICA',null,rcp,fac); renderHome(); generarActa(e, rcp, fac, null, 'BIOMETRICA'); } cerrarEntregaRemota(rcp,'BIOMETRICA'); document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value=''; showToast('✓ Recepción conforme · entrega registrada'); }, 1400));
+    _bioTimers.push(setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'BIOMETRICA',null,rcp,fac); renderHome(); generarActa(selEntregaRemota||e, rcp, fac, null, 'BIOMETRICA'); } cerrarEntregaRemota(rcp,'BIOMETRICA'); document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value=''; showToast('✓ Recepción conforme · entrega registrada'); }, 1400));
   } else {
     el.innerHTML = '<span style="color:var(--red)">✗ '+res.motivo+'</span>';
     _bioTimers.push(setTimeout(closeBio, 2400));
