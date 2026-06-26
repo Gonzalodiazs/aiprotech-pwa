@@ -410,8 +410,7 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
     </div>
     <div class="scan-info"><div class="t" id="scanTitle">Escanea tu factura</div><div class="d" id="scanDesc">Toca “Tomar foto” y captura la factura completa</div></div>
     <div style="padding:0 22px 10px;display:flex;gap:10px">
-      <button class="btn btn-primary" style="flex:2" onclick="tomarFoto()" id="btnFoto">📷 Tomar foto de la factura</button>
-      <button class="btn btn-ghost" style="flex:1" onclick="escanearTimbreVivo()" id="btnVivo" title="Leer el código de barras del timbre (si la factura lo tiene nítido)">📡 Timbre</button>
+      <button class="btn btn-primary" style="flex:1" onclick="tomarFoto()" id="btnFoto">📷 Tomar foto de la factura</button>
     </div>
     <div style="padding:0 22px 14px">
       <button class="btn btn-ghost" style="width:100%;font-size:12.5px" onclick="descargarUltimoPdf()" id="btnVerPdf" disabled>Ver PDF guardado</button>
@@ -1406,16 +1405,11 @@ function procesarFoto(file){
         var fr=document.getElementById('scanFrame'); if(fr) fr.style.display='none';
         ultimoPdf=imgToPdf(jpeg,w,h);
         document.getElementById('btnVerPdf').disabled=!ultimoPdf;
-        // 1) Timbre PDF417 (gratis, exacto) — primero del documento enderezado, si no del original
+        // Timbre PDF417 DESACTIVADO: las facturas de este cliente traen el timbre embebido en muy baja
+        // calidad y ningún motor lo decodifica (probado con 5 facturas reales + motor fuerte). Se lee todo
+        // por IA del texto, que cubre estas facturas sin problema. El lector queda como código inactivo
+        // (cp-ocr.js / escanearTimbreVivo) por si en el futuro cambian a facturas con timbre nítido.
         var ted=null;
-        try{
-          if(window.CPScan){
-            // Lector NATIVO del teléfono primero (lee PDF417 densos mejor); si no, ZXing. No bloquea: cae a IA si falla.
-            ted = CPScan.parseTED(await CPScan.decodePDF417Async(doc||img));
-            if(!ted && doc) ted = CPScan.parseTED(await CPScan.decodePDF417Async(img));
-          }
-        }catch(err){ ted=null; }
-        if(ted){ finalizarEscaneo(ted, file); return; }
         // ── CASCADA DE LECTURA ──
         // Nivel 1: IA online (Gemini) · Nivel 3: OCR offline (Tesseract local) · siempre: manual
         function mapExtraccion(ai, fuente){
