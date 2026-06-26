@@ -1274,9 +1274,8 @@ function openScan(){
 }
 function tomarFoto(){ detenerVivo(); document.getElementById('camInput').click(); }
 // ── Escaneo en vivo del timbre PDF417 con la cámara (ZXing, on-device, gratis) ──
-var liveReader = null;
+var liveReader = null, liveNative = { stream:null, timer:null };
 function escanearTimbreVivo(){
-  if(!window.ZXing){ showToast('Lector no disponible'); tomarFoto(); return; }
   var video=document.getElementById('scanVideo');
   var pv=document.getElementById('scanPreview'); if(pv) pv.style.display='none';
   var fr=document.getElementById('scanFrame'); if(fr) fr.style.display='block';
@@ -1285,6 +1284,12 @@ function escanearTimbreVivo(){
   document.getElementById('scanTitle').textContent='Apunta al timbre electrónico';
   document.getElementById('scanDesc').textContent='Encuadra el código PDF417 del documento';
   video.style.display='block';
+  // Lector NATIVO del teléfono primero (lee PDF417 densos de factura mucho mejor); si no, ZXing.
+  if(window.CPScan && CPScan.nativoDisponible && CPScan.nativoDisponible()){ escaneoVivoNativo(video, pv); return; }
+  zxingVivo(video, pv);
+}
+function zxingVivo(video, pv){
+  if(!window.ZXing){ showToast('Lector no disponible'); tomarFoto(); return; }
   try{
     var hints=new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.PDF_417]);
@@ -1292,7 +1297,6 @@ function escanearTimbreVivo(){
     liveReader=new ZXing.BrowserMultiFormatReader(hints, 200);
     liveReader.decodeFromConstraints({ video:{ facingMode:{ ideal:'environment' } } }, video, function(res, err){
       if(!res) return;
-      // Captura un frame del video como PDF (registro visual del documento)
       try{
         var cv=document.createElement('canvas'); cv.width=video.videoWidth||1080; cv.height=video.videoHeight||1440;
         cv.getContext('2d').drawImage(video,0,0,cv.width,cv.height);
@@ -1307,9 +1311,37 @@ function escanearTimbreVivo(){
     });
   }catch(e){ showToast('No se pudo abrir la cámara'); detenerVivo(); tomarFoto(); }
 }
+// Escaneo en vivo con el lector NATIVO (BarcodeDetector) — bucle sobre frames; si falla, cae a ZXing.
+function escaneoVivoNativo(video, pv){
+  var det; try{ det=new window.BarcodeDetector({ formats:['pdf417'] }); }catch(e){ zxingVivo(video, pv); return; }
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } } }).then(function(stream){
+    liveNative.stream=stream; video.srcObject=stream; video.setAttribute('playsinline',''); try{ video.play(); }catch(e){}
+    liveNative.timer=setInterval(function(){
+      if(!video.videoWidth) return;
+      det.detect(video).then(function(codes){
+        if(!liveNative.timer) return;            // ya se cerró
+        if(!codes || !codes.length) return;
+        var txt=codes[0].rawValue||'';
+        try{
+          var cv=document.createElement('canvas'); cv.width=video.videoWidth; cv.height=video.videoHeight;
+          cv.getContext('2d').drawImage(video,0,0,cv.width,cv.height);
+          var jpeg=cv.toDataURL('image/jpeg',0.7);
+          ultimoPdf=imgToPdf(jpeg,cv.width,cv.height);
+          document.getElementById('btnVerPdf').disabled=!ultimoPdf;
+          if(pv){ pv.src=jpeg; }
+        }catch(e){}
+        detenerVivo();
+        var ted = CPScan ? CPScan.parseTED(txt) : null;
+        finalizarEscaneo(ted, { name:'timbre-'+new Date().getTime()+'.pdf' });
+      }).catch(function(){});
+    }, 350);
+  }).catch(function(){ detenerVivo(); zxingVivo(video, pv); });
+}
 function detenerVivo(){
+  try{ if(liveNative.timer){ clearInterval(liveNative.timer); liveNative.timer=null; } }catch(e){}
+  try{ if(liveNative.stream){ liveNative.stream.getTracks().forEach(function(t){ t.stop(); }); liveNative.stream=null; } }catch(e){}
   try{ if(liveReader){ liveReader.reset(); liveReader=null; } }catch(e){}
-  var v=document.getElementById('scanVideo'); if(v) v.style.display='none';
+  var v=document.getElementById('scanVideo'); if(v){ try{ v.srcObject=null; }catch(e){} v.style.display='none'; }
 }
 // Estado de carga con puntos pulsantes (la pantalla no parece congelada mientras lee)
 function setScanCargando(titulo,desc){
@@ -1326,7 +1358,7 @@ function procesarFoto(file){
       // NO enderezar (a pedido): la detección de bordes RECORTABA la factura. Se guarda la FOTO COMPLETA;
       // la IA usa la imagen full (jpegFull) y el PDF417 lee del original → no se pierde nada y nada se recorta.
       var scanP = Promise.resolve({canvas:null,found:false});
-      scanP.then(function(res){
+      scanP.then(async function(res){
         var doc = (res && res.found && res.canvas) ? res.canvas : null;   // (enderezado deshabilitado)
         var baseW = doc ? doc.width : img.width, baseH = doc ? doc.height : img.height;
         // Reduce para peso del PDF
@@ -1348,8 +1380,9 @@ function procesarFoto(file){
         var ted=null;
         try{
           if(window.CPScan){
-            ted = CPScan.parseTED(CPScan.decodePDF417(doc||img));
-            if(!ted && doc) ted = CPScan.parseTED(CPScan.decodePDF417(img));
+            // Lector NATIVO del teléfono primero (lee PDF417 densos mejor); si no, ZXing. No bloquea: cae a IA si falla.
+            ted = CPScan.parseTED(await CPScan.decodePDF417Async(doc||img));
+            if(!ted && doc) ted = CPScan.parseTED(await CPScan.decodePDF417Async(img));
           }
         }catch(err){ ted=null; }
         if(ted){ finalizarEscaneo(ted, file); return; }

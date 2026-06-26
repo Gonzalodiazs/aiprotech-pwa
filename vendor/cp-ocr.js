@@ -61,6 +61,9 @@
   // El payload del timbre es un XML <TED><DD>...</DD><FRMT>...</FRMT></TED>
   function parseTED(text) {
     if (!text) return null;
+    // Limpia BOM / cualquier byte antes del XML (algunos lectores lo anteponen) → evita "Start tag expected".
+    text = String(text).replace(/^[^<]*/, '').trim();
+    if (!text) return null;
     try {
       var xml = new DOMParser().parseFromString(text, 'application/xml');
       var dd = xml.getElementsByTagName('DD')[0] || xml.documentElement;
@@ -83,5 +86,36 @@
     } catch (e) { return null; }
   }
 
-  window.CPScan = { decodePDF417: decodePDF417, parseTED: parseTED, DTE: DTE };
+  // Lector NATIVO del teléfono (BarcodeDetector): en Android lee PDF417 densos MUCHO mejor que ZXing-JS.
+  // Defensivo: si no existe / no soporta pdf417 / falla / se cuelga, resuelve null y el flujo usa ZXing.
+  function detectNative(source) {
+    return new Promise(function (resolve) {
+      try {
+        if (typeof window.BarcodeDetector === 'undefined') return resolve(null);
+        var fin = false;
+        var to = setTimeout(function () { if (!fin) { fin = true; resolve(null); } }, 1500); // nunca colgar el escaneo
+        Promise.resolve(window.BarcodeDetector.getSupportedFormats ? window.BarcodeDetector.getSupportedFormats() : ['pdf417'])
+          .then(function (fmts) {
+            if (fin) return;
+            if (fmts && fmts.indexOf('pdf417') < 0) { fin = true; clearTimeout(to); resolve(null); return; }
+            return new window.BarcodeDetector({ formats: ['pdf417'] }).detect(source);
+          })
+          .then(function (codes) {
+            if (fin) return; fin = true; clearTimeout(to);
+            resolve(codes && codes.length ? (codes[0].rawValue || null) : null);
+          })
+          .catch(function () { if (!fin) { fin = true; clearTimeout(to); resolve(null); } });
+      } catch (e) { resolve(null); }
+    });
+  }
+  // Decodifica un PDF417 de una imagen: primero el lector nativo, si no, ZXing. Devuelve Promise<string|null>.
+  function decodePDF417Async(img) {
+    return detectNative(img).then(function (txt) {
+      if (txt) return txt;
+      try { return decodePDF417(img); } catch (e) { return null; }
+    }).catch(function () { try { return decodePDF417(img); } catch (e) { return null; } });
+  }
+  function nativoDisponible() { return typeof window.BarcodeDetector !== 'undefined'; }
+
+  window.CPScan = { decodePDF417: decodePDF417, decodePDF417Async: decodePDF417Async, detectNative: detectNative, nativoDisponible: nativoDisponible, parseTED: parseTED, DTE: DTE };
 })();
