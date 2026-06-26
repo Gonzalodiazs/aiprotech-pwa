@@ -919,6 +919,36 @@ function initCierreSig(){ var c=document.getElementById('cierreSig'); if(!c) ret
   c.onmousedown=st; c.onmousemove=mv; c.onmouseup=en; c.onmouseleave=en; c.ontouchstart=st; c.ontouchmove=mv; c.ontouchend=en;
 }
 function clearCierreSig(){ if(_cierreCtx){ _cierreCtx.clearRect(0,0,9999,9999); _cierreHas=false; } }
+// ── Guardar/descargar archivos generados (PDF, Excel) — funciona en navegador Y en el APK Android ──
+// Navegador/PWA: descarga directa. APK (Capacitor): escribe el archivo y abre el menú nativo para
+// GUARDAR o ENVIAR (WhatsApp/correo); el truco <a download> NO funciona dentro del WebView de Android.
+async function guardarArchivo(b64, fname, mime){
+  var cap = window.Capacitor;
+  var nativo = !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.Filesystem);
+  if(nativo){
+    try{
+      var P = cap.Plugins;
+      var w = await P.Filesystem.writeFile({ path: fname, data: b64, directory: 'CACHE' });
+      var uri = (w && w.uri) ? w.uri : (await P.Filesystem.getUri({ path: fname, directory: 'CACHE' })).uri;
+      if(P.Share && P.Share.share && uri){
+        try{ await P.Share.share({ title: fname, files: [uri], dialogTitle: 'Guardar o enviar' }); }
+        catch(e){ try{ await P.Share.share({ title: fname, url: uri, dialogTitle: 'Guardar o enviar' }); }catch(e2){ showToast('✓ Guardado en el dispositivo'); } }
+      } else { showToast('✓ Guardado en el dispositivo'); }
+      return true;
+    }catch(e){ /* si algo falla, cae al método navegador */ }
+  }
+  try{
+    var bin=atob(b64), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    var url=URL.createObjectURL(new Blob([arr],{type:mime||'application/octet-stream'}));
+    var a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} }, 1200);
+    return true;
+  }catch(e){ try{ window.open('data:'+(mime||'application/octet-stream')+';base64,'+b64,'_blank'); }catch(e2){} return false; }
+}
+function guardarPdf(doc, fname){
+  try{ var b64 = doc.output('datauristring').split(',')[1]; return guardarArchivo(b64, fname, 'application/pdf'); }
+  catch(e){ try{ doc.save(fname); }catch(e2){ showToast('No se pudo generar el PDF'); } }
+}
 function rendicionPdf(c, firmaData, nombre, patente){
   if(!window.jspdf||!window.jspdf.jsPDF) return null;
   try{
@@ -953,7 +983,7 @@ function generarRendicion(){
   var doc=rendicionPdf(c, firmaData, pf.nombre||'Repartidor', pf.patente||'');
   if(!doc){ showToast('No se pudo generar el PDF'); return; }
   var fname='rendicion-'+new Date().toISOString().slice(0,10)+'.pdf';
-  try{ doc.save(fname); }catch(e){ try{ window.open(doc.output('bloburl'),'_blank'); }catch(e2){ try{ window.open(doc.output('datauristring'),'_blank'); }catch(e3){} } }
+  guardarPdf(doc, fname);
   closeCierre();
   showToast('✓ Resumen de rendición generado');
 }
@@ -1768,13 +1798,8 @@ function imgToPdf(jpegDataUrl,w,h){
 }
 function descargarUltimoPdf(){
   if(!ultimoPdf) return;
-  try{
-    var b64=ultimoPdf.split(',')[1], bin=atob(b64), arr=new Uint8Array(bin.length);
-    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-    var url=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
-    var a=document.createElement('a'); a.href=url; a.download='factura.pdf'; document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },800);
-  }catch(err){ alert('No se pudo abrir el PDF'); }
+  try{ guardarArchivo(ultimoPdf.split(',')[1], 'factura-'+new Date().toISOString().slice(0,10)+'.pdf', 'application/pdf'); }
+  catch(err){ showToast('No se pudo abrir el PDF'); }
 }
 function renderScan(d){
   d = d || {};
@@ -1821,10 +1846,8 @@ function exportarExcel(){
   XLSX.utils.book_append_sheet(wb, ws, 'Documentos');
   var fname = 'documentos-' + new Date().toISOString().slice(0,10) + '.xlsx';
   try{
-    var out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
-    var url = URL.createObjectURL(new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    var a = document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 800);
+    var b64 = XLSX.write(wb, { bookType:'xlsx', type:'base64' });
+    guardarArchivo(b64, fname, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     showToast('✓ Excel exportado · ' + docs.length + ' documento(s)');
   }catch(err){ showToast('No se pudo exportar el Excel'); }
 }
