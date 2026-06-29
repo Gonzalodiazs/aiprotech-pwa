@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="AIPROTECH">
 <link rel="apple-touch-icon" href="./pwa/icon-192.png">
 <script src="./store.js"></script>
+<script src="./vendor/cp-logo.js"></script>
 <script src="./vendor/cp-auth.js"></script>
 <script>try{ if(!CPAuth.requireSession()) throw 0; }catch(e){ if(e!==0){ document.body.innerHTML='<div style="padding:28px;font-family:sans-serif;color:#232A33;line-height:1.5">No se pudo verificar la sesión. Activa el almacenamiento del navegador (no uses modo incógnito) y recarga la página.</div>'; } throw 0; }</script>
 <script src="./vendor/jspdf.umd.min.js"></script>
@@ -1081,6 +1082,7 @@ function rendicionPdf(c, firmaData, nombre, patente){
       rText('MONTO',X.monto); rText('M.BAUCHER',X.baucher); rText('DIFERENCIA',X.dif); cText('OK',X.chk);
       doc.setFont(undefined,'normal'); y+=4; doc.setDrawColor(150); doc.line(M,y,W-M,y); y+=12;
     }
+    try{ if(window.CP_LOGO){ var _lw=74, _lh=Math.round(_lw*((window.CP_LOGO_H||146)/(window.CP_LOGO_W||236))); doc.addImage(window.CP_LOGO,'PNG', W-M-_lw, 14, _lw, _lh); } }catch(eL){} // logo Soprole (PNG transparente), arriba a la derecha
     doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('RENDICION DEL DIA',M,46); doc.setFont(undefined,'normal');
     doc.setFontSize(9.5);
     doc.text('Repartidor: '+(nombre||'-')+(patente?('   ·   '+patente):''), M, 64);
