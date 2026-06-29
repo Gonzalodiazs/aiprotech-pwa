@@ -910,7 +910,7 @@ function openCierre(){
 function closeCierre(){ var b=document.getElementById('cierreBg'),s=document.getElementById('cierreSheet'); if(b)b.classList.remove('open'); if(s)s.classList.remove('open'); }
 // ── PRELIQUIDACIÓN ruta-vs-retorno: cruza las facturas que planta SACÓ a ruta (entregasPlanta)
 //    contra lo que el chofer rindió hoy (escaneado), y marca CUADRADA / DIFERENCIA / SIN_RENDIR por factura. ──
-function _normFolio(f){ return String(f==null?'':f).replace(/[^0-9A-Za-z]/g,'').replace(/^0+/,'').toUpperCase(); }
+function _normFolio(f){ return String(f==null?'':f).replace(/[^0-9A-Za-z]/g,'').replace(/^[A-Za-z]+/,'').replace(/^0+/,'').toUpperCase(); } // quita prefijo de tipo de doc (ej "FA") + ceros a la izq → calza "FA38958616" con "38958616"
 function preliquidacion(){
   var ruta=(typeof entregasPlanta!=='undefined'&&Array.isArray(entregasPlanta))?entregasPlanta:[];
   var cq=(window.CP&&CP.cuadreDia)?CP.cuadreDia():{docs:[],fallidas:[]};
@@ -1611,7 +1611,7 @@ function pintarVisada(){
 }
 function toggleVisada(){ if(!docPendiente) return; docPendiente.visada=!docPendiente.visada; pintarVisada(); }
 // El folio escaneado debe coincidir con un folio de la ruta que planta cargó a este transporte.
-function entregaPorFolio(fol){ var r=(typeof entregasPlanta!=='undefined'&&entregasPlanta)?entregasPlanta:[]; fol=String(fol||'').trim(); if(!fol) return null; return r.filter(function(e){ return e&&e.folio&&String(e.folio).trim()===fol; })[0]||null; }
+function entregaPorFolio(fol){ var r=(typeof entregasPlanta!=='undefined'&&entregasPlanta)?entregasPlanta:[]; var nf=_normFolio(fol); if(!nf) return null; return r.filter(function(e){ return e&&e.folio&&_normFolio(e.folio)===nf; })[0]||null; } // compara folio normalizado (ignora "FA"/ceros)
 function pintarRutaMatch(){
   var box=document.getElementById('rutaMatch'); if(!box) return;
   var ruta=(typeof entregasPlanta!=='undefined'&&entregasPlanta)?entregasPlanta:[];
