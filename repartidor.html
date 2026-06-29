@@ -1045,50 +1045,80 @@ function guardarPdf(doc, fname){
   try{ var b64 = doc.output('datauristring').split(',')[1]; return guardarArchivo(b64, fname, 'application/pdf'); }
   catch(e){ try{ doc.save(fname); }catch(e2){ showToast('No se pudo generar el PDF'); } }
 }
+// Una fila de rendición por factura: folio, método, monto (total), monto baucher (comprobante),
+// diferencia del descuadre y si quedó CUADRADA. Maneja efectivo/crédito (sin baucher), mixto y electrónico.
+function _filaRend(d){
+  var monto = Number(d.valorConIva)||Number(d.monto)||0;
+  var fp = (d.formaPago||'').toUpperCase();
+  var baucher = Number(d.pagoMonto)||0;
+  var esEf = fp==='EFECTIVO';
+  var esCred = fp.indexOf('CREDITO')>=0 && fp.indexOf('MIXTO')<0;
+  var esMixto = fp.indexOf('MIXTO')>=0;
+  var dif=0, cuad=true, necesita=false;
+  if(esEf || esCred){ cuad=true; dif=0; baucher=0; necesita=false; }                 // efectivo/crédito: sin baucher, cuadra por definición
+  else if(esMixto){
+    var det=d.pagoDetalle||{}, ef=Number(det.EFECTIVO)||0, cr=Number(det.CREDITO)||0, elec=0;
+    Object.keys(det).forEach(function(k){ if(k!=='EFECTIVO'&&k!=='CREDITO') elec+=Number(det[k])||0; });
+    necesita = elec>0; if(baucher<=0) baucher=elec;
+    var rendido = ef + cr + (d.tieneComprobante?elec:0);
+    dif = monto - rendido; var tolm=Math.max(2,Math.round(monto*0.01));
+    cuad = Math.abs(dif)<=tolm && (elec<=0 || d.tieneComprobante);
+  } else {                                                                            // transferencia/depósito/cheque/getnet/débito
+    necesita = !!fp;
+    if(d.tieneComprobante){ dif = baucher>0?(monto-baucher):0; var tol=Math.max(2,Math.round(monto*0.01)); cuad=Math.abs(dif)<=tol; }
+    else { cuad=false; dif=monto-baucher; }                                           // sin comprobante → descuadrado
+  }
+  return { folio:String(d.folio||'—'), metodo:(fp||'—'), monto:monto, baucher:baucher, dif:dif, cuad:cuad, necesita:necesita };
+}
 function rendicionPdf(c, firmaData, nombre, patente){
   if(!window.jspdf||!window.jspdf.jsPDF) return null;
   try{
-    var doc=new window.jspdf.jsPDF({unit:'pt',format:'a5'});
-    doc.setFontSize(15); doc.text('RESUMEN DE RENDICION DEL DIA',40,46);
-    doc.setDrawColor(190); doc.line(40,56,380,56);
-    doc.setFontSize(10.5); var y=80;
-    function L(t,bold){ if(y>560){ doc.addPage(); y=50; } if(bold)doc.setFont(undefined,'bold'); doc.text(String(t),40,y); if(bold)doc.setFont(undefined,'normal'); y+=18; }
-    L('Repartidor: '+(nombre||'-')+(patente?('   ·   '+patente):''));
-    L('Fecha: '+new Date().toLocaleString('es-CL'));
-    L('Facturas del dia: '+c.n+'   ·   Facturado: '+CP.clp(c.totalFacturado));
-    doc.line(40,y-6,380,y-6); y+=6;
-    L('Efectivo a rendir: '+CP.clp(c.efectivo), true);
-    L('Con comprobante: '+CP.clp(c.electronicoOk));
+    var doc=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
+    var M=36, W=595, X={folio:36, metodo:108, monto:330, baucher:410, dif:498, chk:538};
+    var y=0;
+    function rText(s,xr){ var w=doc.getTextWidth(String(s)); doc.text(String(s), xr-w, y); }   // alineado a la derecha (robusto en jsPDF 1.x/2.x)
+    function cText(s,xc){ var w=doc.getTextWidth(String(s)); doc.text(String(s), xc-w/2, y); }  // centrado
+    function cab(){
+      doc.setFont(undefined,'bold'); doc.setFontSize(8.5);
+      doc.text('FOLIO',X.folio,y); doc.text('METODO',X.metodo,y);
+      rText('MONTO',X.monto); rText('M.BAUCHER',X.baucher); rText('DIFERENCIA',X.dif); cText('OK',X.chk);
+      doc.setFont(undefined,'normal'); y+=4; doc.setDrawColor(150); doc.line(M,y,W-M,y); y+=12;
+    }
+    doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.text('RENDICION DEL DIA',M,46); doc.setFont(undefined,'normal');
+    doc.setFontSize(9.5);
+    doc.text('Repartidor: '+(nombre||'-')+(patente?('   ·   '+patente):''), M, 64);
+    doc.text('Fecha: '+new Date().toLocaleString('es-CL')+'   ·   Facturas: '+c.n+'   ·   Facturado: '+CP.clp(c.totalFacturado), M, 78);
+    y=102; doc.setFontSize(8.5); cab();
+    var docs=(c.docs||[]).filter(function(d){ return (d.estado||'')!=='FALLIDA'; });
+    var nCuad=0, sMonto=0, sBau=0, sDif=0;
+    if(!docs.length){ doc.text('Sin facturas registradas hoy.', M, y); y+=16; }
+    docs.forEach(function(d){
+      if(y>805){ doc.addPage(); y=50; cab(); }
+      var f=_filaRend(d); if(f.cuad) nCuad++; sMonto+=f.monto; if(f.necesita){ sBau+=f.baucher; sDif+=f.dif; }
+      if(f.cuad) doc.setTextColor(30,127,84); else doc.setTextColor(200,64,46);
+      doc.text((f.folio.length>14?f.folio.slice(0,14):f.folio), X.folio, y);
+      doc.text((f.metodo.length>20?f.metodo.slice(0,19)+'.':f.metodo), X.metodo, y);
+      rText(CP.clp(f.monto), X.monto); rText(f.necesita?CP.clp(f.baucher):'-', X.baucher);
+      rText(f.necesita?CP.clp(f.dif):'-', X.dif); cText(f.cuad?'OK':'X', X.chk);
+      doc.setTextColor(0,0,0); y+=14;
+    });
+    doc.setDrawColor(150); doc.line(M,y-9,W-M,y-9);
+    doc.setFont(undefined,'bold');
+    doc.text('TOTAL ('+docs.length+')', X.folio, y);
+    rText(CP.clp(sMonto), X.monto); rText(CP.clp(sBau), X.baucher); rText(CP.clp(sDif), X.dif); cText(nCuad+'/'+docs.length, X.chk);
+    doc.setFont(undefined,'normal'); y+=20;
+    doc.setFontSize(9.5);
+    function L(t,bold){ if(y>800){doc.addPage();y=50;} if(bold)doc.setFont(undefined,'bold'); doc.text(String(t),M,y); if(bold)doc.setFont(undefined,'normal'); y+=15; }
+    L('Cuadradas: '+nCuad+' de '+docs.length+(docs.length&&nCuad===docs.length?'  -  TODO CUADRADO':(docs.length?('  -  '+(docs.length-nCuad)+' por revisar'):'')), true);
+    L('Efectivo a rendir: '+CP.clp(c.efectivo)+'   ·   Con comprobante: '+CP.clp(c.electronicoOk));
     if(c.aCobrarDespues>0) L('A cobrar despues (credito): '+CP.clp(c.aCobrarDespues));
     var pend=(c.pendientes.length)+(c.arrastreN||0), pm=(c.pendienteMonto||0)+(c.arrastreMonto||0);
     if(pend>0) L('PENDIENTE sin comprobante: '+pend+' ('+CP.clp(pm)+')', true);
-    doc.line(40,y-6,380,y-6); y+=6;
-    var fps=Object.keys(c.porPago||{}).filter(function(k){return c.porPago[k]>0;});
-    if(fps.length){ L('Por forma de pago:'); fps.forEach(function(k){ L('   '+k+': '+CP.clp(c.porPago[k])); }); }
-    // Preliquidación ruta-vs-rendido (si planta cargó la ruta del día)
-    try{
-      var pl=preliquidacion();
-      if(pl.rutaN){
-        doc.line(40,y-6,380,y-6); y+=6;
-        L('PRELIQUIDACION RUTA VS RENDIDO  ['+(pl.cuadradoTotal?'CUADRADO':'CON DIFERENCIAS')+']', true);
-        L('Facturas en ruta: '+pl.rutaN+'   .   Despachado neto: '+CP.clp(pl.tDespachado));
-        L('Rendido neto: '+CP.clp(pl.tRendido)+'   .   Cuadradas: '+pl.nCuadradas);
-        if(pl.nDiferencia) L('Con diferencia: '+pl.nDiferencia, true);
-        if(pl.nRevisar) L('Revisar: '+pl.nRevisar, true);
-        if(pl.nSinRendir) L('Sin rendir: '+pl.nSinRendir+' ('+CP.clp(pl.tDif)+')', true);
-        if(pl.nNoEntregada) L('No entregadas: '+pl.nNoEntregada);
-        if(pl.nExtras) L('Fuera de ruta: '+pl.nExtras);
-        var probl=pl.items.filter(function(it){return it.estado==='DIFERENCIA'||it.estado==='SIN_RENDIR'||it.estado==='REVISAR';});
-        if(probl.length){ L('Pendientes de cuadrar:');
-          probl.slice(0,20).forEach(function(it){ var tag=it.estado==='DIFERENCIA'?('dif '+CP.clp(it.dif)):(it.estado==='REVISAR'?'revisar':'sin rendir'); L('   '+String(it.folio)+' '+String(it.cliente).slice(0,20)+' . '+tag); });
-          if(probl.length>20) L('   ...y '+(probl.length-20)+' mas');
-        }
-      }
-    }catch(e){}
-    if(y>470){ doc.addPage(); y=50; }
-    y+=12; doc.text('Firma:',40,y);
-    if(firmaData){ try{ doc.addImage(firmaData,'PNG',92,y-16,160,56); }catch(e2){} }
-    else { doc.setDrawColor(150); doc.line(92,y,260,y); }
+    try{ var pl=preliquidacion(); if(pl.rutaN){ L('Ruta vs rendido: '+(pl.cuadradoTotal?'CUADRADO':(pl.nDiferencia+' dif · '+pl.nSinRendir+' sin rendir'+(pl.nRevisar?(' · '+pl.nRevisar+' revisar'):''))), true); } }catch(e){}
+    y+=18; if(y>770){ doc.addPage(); y=60; }
+    doc.text('Firma:',M,y);
+    if(firmaData){ try{ doc.addImage(firmaData,'PNG',M+44,y-16,170,56); }catch(e2){} }
+    else { doc.setDrawColor(150); doc.line(M+44,y,M+230,y); }
     return doc;
   }catch(err){ return null; }
 }
