@@ -344,7 +344,6 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin-bottom:9px">FORMA DE PAGO DE LA FACTURA</div>
       <div id="pagoBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
         <button class="pago" data-pago="EFECTIVO" onclick="selPago(this)">💵 Efectivo</button>
-        <button class="pago" data-pago="DEBITO" onclick="selPago(this)">💳 Débito</button>
         <button class="pago" data-pago="CREDITO" onclick="selPago(this)">💳 Crédito (FP30)</button>
         <button class="pago" data-pago="CHEQUE" onclick="selPago(this)">🧾 Cheque</button>
         <button class="pago" data-pago="TRANSFERENCIA" onclick="selPago(this)">🏦 Transferencia</button>
@@ -357,7 +356,6 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
         <div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.05em;margin-bottom:7px">¿CON QUÉ SE PAGÓ? · marca los que apliquen</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           <button class="pago-sub" data-mc="EFECTIVO" onclick="toggleMixtoComp(this)">Efectivo</button>
-          <button class="pago-sub" data-mc="DEBITO" onclick="toggleMixtoComp(this)">Débito</button>
           <button class="pago-sub" data-mc="CREDITO" onclick="toggleMixtoComp(this)">Crédito (FP30)</button>
           <button class="pago-sub" data-mc="CHEQUE" onclick="toggleMixtoComp(this)">Cheque</button>
           <button class="pago-sub" data-mc="TRANSFERENCIA" onclick="toggleMixtoComp(this)">Transferencia</button>
@@ -585,7 +583,6 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
     <div style="font-size:10.5px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:.06em;margin:4px 0 8px">FORMA DE PAGO CORRECTA</div>
     <div id="corrBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px">
       <button class="pago" data-cp="EFECTIVO" onclick="selCorr(this)">💵 Efectivo</button>
-      <button class="pago" data-cp="DEBITO" onclick="selCorr(this)">💳 Débito</button>
       <button class="pago" data-cp="FP30" onclick="selCorr(this)">💳 Crédito (FP30)</button>
       <button class="pago" data-cp="CHEQUE" onclick="selCorr(this)">🧾 Cheque</button>
       <button class="pago" data-cp="TRANSFERENCIA" onclick="selCorr(this)">🏦 Transferencia</button>
@@ -1764,7 +1761,7 @@ function actualizarSubpagos(){
 // Genera un input de monto por cada método marcado en el pago mixto (conserva lo ya escrito).
 function renderMixtoMontos(){
   var cont=document.getElementById('mixtoMontos'); if(!cont) return;
-  var nombres={EFECTIVO:'Efectivo',DEBITO:'Débito',CREDITO:'Crédito (FP30)',CHEQUE:'Cheque',TRANSFERENCIA:'Transferencia',DEPOSITO:'Depósito',GETNET:'Getnet'};
+  var nombres={EFECTIVO:'Efectivo',CREDITO:'Crédito (FP30)',CHEQUE:'Cheque',TRANSFERENCIA:'Transferencia',DEPOSITO:'Depósito',GETNET:'Getnet'};
   var prev={}; Array.prototype.forEach.call(cont.querySelectorAll('input[data-mm]'), function(i){ prev[i.getAttribute('data-mm')]=(i.value||'').replace(/[^0-9]/g,''); });
   cont.innerHTML = mixtoComps.map(function(m){
     return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:0 0 96px;font-size:11.5px;color:var(--ink-dim)">'+(nombres[m]||m)+'</span><input data-mm="'+m+'" inputmode="numeric" placeholder="Monto $" class="minp" style="flex:1" oninput="resumenMixto()" value="'+(prev[m]||'')+'"></div>';
