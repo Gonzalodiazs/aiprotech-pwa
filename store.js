@@ -26,6 +26,19 @@
     catch (e) { return null; }
   }
 
+  // ── Aislamiento por usuario ───────────────────────────────────────────────
+  // Si en este dispositivo inicia sesión un usuario DISTINTO al dueño del caché local,
+  // se limpia el cuadre (cp_data_v6) → ningún chofer ve los comprobantes/documentos de otro.
+  try {
+    var _perfil = JSON.parse(localStorage.getItem('cp_perfil') || '{}');
+    var _cur = (_perfil && _perfil.usuario) ? String(_perfil.usuario) : '';
+    if (_cur) {
+      var _owner = localStorage.getItem('cp_data_owner') || '';
+      if (_owner && _owner !== _cur) { try { localStorage.removeItem(KEY); } catch (e) {} }
+      localStorage.setItem('cp_data_owner', _cur);
+    }
+  } catch (e) {}
+
   var data = load();
   if (!data) { data = {}; persist(); }   // arranque limpio (sin datos demo)
   ensureData();
