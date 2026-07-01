@@ -326,12 +326,22 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       .fh-ver[disabled]{color:var(--ink-faint);border-color:var(--line);cursor:default}
     </style>
     <div class="card" id="cardFacturas" style="animation-delay:.32s">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <div class="sec-title">Facturas de hoy</div>
-        <button onclick="renderFacturasHoy()" class="mini-btn">↻ Actualizar</button>
+        <div style="display:flex;gap:6px">
+          <button onclick="toggleBuscador()" class="mini-btn" id="btnBuscador">🔎 Anteriores</button>
+          <button onclick="renderFacturasHoy()" class="mini-btn">↻</button>
+        </div>
       </div>
       <div class="cq-n" id="fhResumen">0 facturas</div>
+      <div style="font-size:10.5px;color:var(--ink-faint);margin:2px 0 8px;line-height:1.4">📷 La imagen de la factura se puede ver hasta <b>24 h</b> desde la foto. Después queda solo la información (buscable).</div>
       <div id="facturasBody"></div>
+      <div id="buscadorBox" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="sec-title" style="font-size:13px;margin-bottom:8px">Buscar facturas anteriores</div>
+        <input id="buscadorInput" type="search" inputmode="search" autocomplete="off" oninput="buscarFacturas()" placeholder="Folio, cliente o fecha (dd/mm)…" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--line-2);border-radius:11px;font-family:var(--sans);font-size:14px;background:var(--bg);color:var(--ink)">
+        <div class="cq-n" id="buscadorResumen" style="margin-top:8px">—</div>
+        <div id="buscadorResultados"></div>
+      </div>
     </div>
   </div>
   <!-- Scanner -->
@@ -831,11 +841,48 @@ function renderFacturasHoy(){
     var fallida=((d.estado||'')==='FALLIDA');
     var estB=fallida?'<span class="fh-badge fh-b-no">🚫 no entregada</span>':'<span class="fh-badge fh-b-ent">✓ entregada</span>';
     var compB=(!fallida && d.tieneComprobante)?'<span class="fh-badge fh-b-comp">📎 comprobante</span>':'';
-    var puedeVer=!!(d.pdf || d.pdfUrl);
-    var ver=puedeVer
-      ? '<button class="fh-ver" onclick="verFacturaPdf(\''+escEnt(d.clientReqId||'')+'\')">👁 Ver</button>'
-      : '<button class="fh-ver" disabled title="La imagen ya está en planta">sin copia</button>';
+    var ver=_verBtn(d);
     return '<div class="fh-row"><div class="fh-main"><div class="fh-fol">'+escEnt(d.folio||'—')+'</div><div class="fh-cli">'+cli+'</div><div class="fh-meta">'+(hora?('<span>'+hora+'</span> · '):'')+'<span>'+fp+'</span>'+estB+compB+'</div></div><div class="fh-right"><div class="fh-monto">'+CP.clp(tot)+'</div>'+ver+'</div></div>';
+  }).join('');
+}
+// Ventana para VER la imagen de la factura: 24 h desde la foto. Después queda solo la información (optimiza
+// recursos). Los DATOS de la factura se conservan; la imagen sigue en la nube para la oficina (no se borra acá).
+var _VENTANA_VER_MS = 24*60*60*1000;
+function _facturaVigente(d){ var t=d?(Number(d.ts)||0):0; return t>0 && (Date.now()-t) < _VENTANA_VER_MS; }
+// Botón "Ver" según estado: vigente+con imagen → Ver; vigente sin copia → sin copia; pasadas 24 h → archivada.
+function _verBtn(d){
+  var crid=escEnt((d&&d.clientReqId)||'');
+  if(!_facturaVigente(d)) return '<button class="fh-ver" disabled title="La imagen se archivó tras 24 h · quedan los datos">🗄 archivada</button>';
+  if(!(d&&(d.pdf||d.pdfUrl))) return '<button class="fh-ver" disabled title="La imagen ya está en planta">sin copia</button>';
+  return '<button class="fh-ver" onclick="verFacturaPdf(\''+crid+'\')">👁 Ver</button>';
+}
+// Buscador de facturas pasadas (sobre la INFORMACIÓN local de todos los días; la imagen solo si está dentro de 24 h).
+function toggleBuscador(){
+  var box=document.getElementById('buscadorBox'), btn=document.getElementById('btnBuscador'); if(!box) return;
+  var abierto=box.style.display!=='none';
+  box.style.display=abierto?'none':'block';
+  if(btn) btn.textContent=abierto?'🔎 Anteriores':'✕ Cerrar';
+  if(!abierto){ buscarFacturas(); var inp=document.getElementById('buscadorInput'); if(inp){ try{ inp.focus(); }catch(e){} } }
+}
+function buscarFacturas(){
+  var q=''; var inp=document.getElementById('buscadorInput'); if(inp) q=(inp.value||'').trim().toLowerCase();
+  var box=document.getElementById('buscadorResultados'); if(!box) return;
+  var all=(window.CP&&CP.documentos)?CP.documentos():[];
+  var res=all.filter(function(d){
+    if(!q) return true;
+    var fechaTxt=''; try{ fechaTxt=new Date(d.ts).toLocaleDateString('es-CL'); }catch(e){}
+    return [d.folio,d.cliente,d.local,d.codigoCliente,d.formaPago,fechaTxt].join(' ').toLowerCase().indexOf(q)>=0;
+  });
+  var total=res.length; res=res.slice(0,50);
+  var resu=document.getElementById('buscadorResumen');
+  if(resu) resu.textContent = total ? (total+' factura'+(total===1?'':'s')+(q?(' encontrada'+(total===1?'':'s')):' en total')+(total>50?' · muestro 50':'')) : (q?'Sin resultados':'Aún no hay facturas');
+  if(!res.length){ box.innerHTML=''; return; }
+  box.innerHTML=res.map(function(d){
+    var tot=Number(d.valorConIva)||Number(d.monto)||0;
+    var cli=escEnt(d.cliente||d.local||d.codigoCliente||'—');
+    var fecha=''; try{ var dt=new Date(d.ts); fecha=dt.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); }catch(e){}
+    var badge=((d.estado||'')==='FALLIDA')?'<span class="fh-badge fh-b-no">🚫</span>':'';
+    return '<div class="fh-row"><div class="fh-main"><div class="fh-fol">'+escEnt(d.folio||'—')+'</div><div class="fh-cli">'+cli+'</div><div class="fh-meta"><span>'+escEnt(fecha)+'</span> · <span>'+escEnt(d.formaPago||'—')+'</span>'+badge+'</div></div><div class="fh-right"><div class="fh-monto">'+CP.clp(tot)+'</div>'+_verBtn(d)+'</div></div>';
   }).join('');
 }
 // Abre la factura escaneada: 1) PDF local si aún está en el teléfono, 2) si ya se purgó, URL FIRMADA desde el
@@ -844,6 +891,7 @@ function verFacturaPdf(clientReqId){
   if(!clientReqId){ try{showToast('Factura sin identificador');}catch(e){} return; }
   var d=(window.CP&&CP.documentos?CP.documentos():[]).filter(function(x){return x.clientReqId===clientReqId;})[0];
   if(!d){ try{showToast('No encuentro la factura');}catch(e){} return; }
+  if(!_facturaVigente(d)){ try{ showToast('La imagen se archivó · disponible solo 24 h desde la foto. Quedan los datos.'); }catch(e){} return; }
   if(d.pdf){ try{ guardarArchivo(d.pdf.split(',')[1], 'factura-'+(d.folio||'doc')+'.pdf', 'application/pdf'); return; }catch(e){} }
   if(d.pdfUrl){ _abrirComprobante(d.pdfUrl); return; }
   try{ showToast('La imagen ya está en planta · no queda copia en el teléfono'); }catch(e){}
