@@ -12,7 +12,6 @@
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;line-height:1.68;font-size:15.5px;padding:0 16px 90px}
 .doc{max-width:820px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:4px;box-shadow:0 18px 60px rgba(31,38,46,.07);padding:0}
-/* Membrete */
 .letterhead{padding:34px 46px 24px;border-bottom:2px solid var(--ink)}
 .lh-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .brand{display:inline-flex;align-items:center;gap:11px}
@@ -23,9 +22,9 @@ body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-seri
 h1{font-family:'Fraunces',serif;font-size:29px;font-weight:600;letter-spacing:-.02em;line-height:1.12;margin:26px 0 6px}
 .subtitle{font-size:14px;color:var(--ink-dim);margin-bottom:2px}
 .vig{font-size:12.5px;color:var(--gold);font-weight:600;margin-top:10px}
-/* Cuerpo */
 .body{padding:30px 46px 40px}
-.lead{font-size:15.5px;color:var(--ink-dim);margin-bottom:26px}
+.lead{font-size:15.5px;color:var(--ink-dim);margin-bottom:14px}
+.note{background:#FBF9F4;border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--ink-dim);margin-bottom:26px}
 .toc{background:#FBF9F4;border:1px solid var(--line);border-radius:8px;padding:18px 22px;margin-bottom:34px}
 .toc h4{font-family:'IBM Plex Sans',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft);margin-bottom:10px}
 .toc ol{margin:0;padding-left:20px;columns:2;column-gap:30px}
@@ -64,11 +63,12 @@ a.inl:hover{border-bottom-color:var(--blue)}
     </div>
     <h1>Política de Privacidad y Seguridad de la Información</h1>
     <div class="subtitle">Aplicación móvil y plataforma web <b>AIPROTECH Repartidor</b></div>
-    <div class="vig">Vigente desde el 30 de junio de 2026 · Versión 2.0</div>
+    <div class="vig">Vigente desde el 30 de junio de 2026 · Versión 2.1</div>
   </div>
 
   <div class="body">
     <p class="lead">El presente documento regula el tratamiento de datos personales y las medidas de seguridad de la información aplicables a la aplicación móvil y a la plataforma web <b>AIPROTECH Repartidor</b> (en adelante, “la Plataforma”). Se emite en cumplimiento de la <b>Ley N° 19.628 sobre Protección de la Vida Privada</b> y de la <b>Ley N° 21.719</b> que establece el nuevo marco de protección de datos personales de la República de Chile.</p>
+    <div class="note">La Ley N° 21.719 fue publicada el 13 de diciembre de 2024 y entra en plena vigencia el 1 de diciembre de 2026. Hasta esa fecha rige la Ley N° 19.628; no obstante, el Responsable adopta anticipadamente los estándares de la nueva ley.</div>
 
     <div class="toc">
       <h4>Índice</h4>
@@ -82,7 +82,7 @@ a.inl:hover{border-bottom-color:var(--blue)}
         <li><a href="#s7">Encargados y terceros</a></li>
         <li><a href="#s8">Transferencia internacional</a></li>
         <li><a href="#s9">Plazo de conservación</a></li>
-        <li><a href="#s10">Seguridad de la información</a></li>
+        <li><a href="#s10">Seguridad y brechas</a></li>
         <li><a href="#s11">Derechos del titular</a></li>
         <li><a href="#s12">Ejercicio de derechos y reclamos</a></li>
         <li><a href="#s13">Menores de edad</a></li>
@@ -95,7 +95,7 @@ a.inl:hover{border-bottom-color:var(--blue)}
 
     <section id="s1">
       <h2><span class="n">1.</span> Identificación del responsable del tratamiento</h2>
-      <p>El responsable del tratamiento de los datos personales es <b>Comercial Santa Elena</b> (en adelante, “la Empresa” o “el Responsable”), empresa de distribución constituida y domiciliada en la República de Chile, quien pone la Plataforma a disposición de sus conductores y personal para fines exclusivamente laborales y operativos.</p>
+      <p>El responsable del tratamiento de los datos personales es <b>Comercial Santa Elena</b>, <b>RUT 78.402.094-0</b> (en adelante, “la Empresa” o “el Responsable”), empresa de distribución constituida y domiciliada en la República de Chile, quien pone la Plataforma a disposición de sus conductores y personal para fines exclusivamente laborales y operativos.</p>
       <p>Para todo asunto relativo a esta política o al tratamiento de datos, el Responsable ha dispuesto el canal de contacto indicado en la Sección 17.</p>
     </section>
 
@@ -136,13 +136,13 @@ a.inl:hover{border-bottom-color:var(--blue)}
       <table class="tbl">
         <tr><th>Categoría</th><th>Detalle</th></tr>
         <tr><td><b>Datos de cuenta</b></td><td>Usuario (código de transporte) y credenciales de acceso del conductor o del personal.</td></tr>
-        <tr><td><b>Datos de ubicación</b></td><td>Ubicación geográfica (GPS) al momento de registrar una entrega, para dejar constancia del lugar y la hora.</td></tr>
+        <tr><td><b>Ubicación (GPS)</b></td><td>Mientras la aplicación está en uso, la posición geográfica del dispositivo se monitorea de forma continua y con alta precisión, para dejar constancia del lugar de las entregas e incidencias. La última posición conocida se conserva localmente en el dispositivo hasta su sincronización.</td></tr>
         <tr><td><b>Imágenes de documentos</b></td><td>Fotografías de facturas y de comprobantes de pago capturadas con la cámara del dispositivo.</td></tr>
         <tr><td><b>Datos de la operación</b></td><td>Folio, montos, forma de pago, notas de crédito, estado de la entrega e incidencias.</td></tr>
-        <tr><td><b>Firma de recepción</b></td><td>Firma gráfica trazada en pantalla por quien recibe la entrega, como constancia (acta de recepción).</td></tr>
+        <tr><td><b>Firma de recepción</b></td><td>Nombre y firma gráfica trazada en pantalla por la persona que recibe la entrega, como constancia (acta de recepción). Ver Sección 6 respecto de estos datos de terceros.</td></tr>
         <tr><td><b>Datos técnicos</b></td><td>Registros básicos de funcionamiento, dispositivo y errores, con fines de operación y seguridad.</td></tr>
       </table>
-      <p>La Plataforma <b>no</b> solicita ni trata categorías de datos sensibles (como salud, origen étnico, afiliación política o sindical, entre otras) para su funcionamiento.</p>
+      <p>La Plataforma <b>no</b> solicita ni trata categorías de datos sensibles (como salud, origen étnico, afiliación política o sindical, ni datos biométricos) para su funcionamiento.</p>
     </section>
 
     <section id="s6">
@@ -155,31 +155,42 @@ a.inl:hover{border-bottom-color:var(--blue)}
         <tr><td>Lectura automática de documentos para agilizar la captura.</td><td>Interés legítimo (eficiencia operacional).</td></tr>
         <tr><td>Prevención de errores, fraudes y seguridad de la operación.</td><td>Interés legítimo y deber de seguridad.</td></tr>
       </table>
+      <p>Respecto de los datos de la persona que <b>recibe</b> la entrega (nombre y firma de recepción), que es un tercero distinto del trabajador, el tratamiento se funda en el interés legítimo de acreditar la entrega conforme y en la ejecución del contrato de transporte. Al momento de firmar, se informa a dicha persona sobre este tratamiento y sus derechos.</p>
       <p>Los datos no se utilizan con fines de publicidad ni de perfilamiento comercial, ni se venden a terceros.</p>
     </section>
 
     <section id="s7">
       <h2><span class="n">7.</span> Encargados de tratamiento y terceros</h2>
-      <p>Para operar, la Plataforma se apoya en proveedores de tecnología que actúan como <b>encargados del tratamiento</b> por cuenta y bajo instrucciones del Responsable:</p>
+      <p>Para operar, la Plataforma se apoya en proveedores de tecnología que actúan como <b>encargados del tratamiento</b> por cuenta y bajo instrucciones del Responsable, con quienes se suscriben los correspondientes Acuerdos de Tratamiento de Datos (DPA):</p>
       <ul>
-        <li><b>Supabase</b> — servicios de base de datos y almacenamiento en la nube, donde se alojan de forma segura los datos de la operación y los documentos. Política: <a class="inl" href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</li>
-        <li><b>Google (API de Gemini)</b> — procesamiento automatizado de las imágenes de documentos para extraer su texto (folio, montos, etc.). Los datos enviados a la API no se emplean para publicidad. Política: <a class="inl" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
+        <li><b>Supabase Inc.</b> — servicios de base de datos y almacenamiento en la nube, donde se alojan los datos de la operación y los documentos. Política: <a class="inl" href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</li>
+        <li><b>Google LLC (API de Gemini):</b> a este servicio se envía la <b>imagen del documento</b> (factura o comprobante) para su lectura automática y extracción de datos. Los datos enviados no se emplean para publicidad. Política: <a class="inl" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
+        <li><b>Google LLC (Google Fonts):</b> la interfaz web carga tipografías desde los servidores de Google, lo que implica la transmisión de la dirección IP del dispositivo. Es un uso estrictamente funcional (presentación), no publicitario.</li>
+        <li><b>Proveedores de alojamiento web (GitHub, Inc. y Cloudflare, Inc.):</b> publican el sitio y sus recursos estáticos.</li>
       </ul>
       <p>Estos encargados están obligados a tratar los datos únicamente para las finalidades indicadas y a aplicar medidas de seguridad adecuadas.</p>
     </section>
 
     <section id="s8">
       <h2><span class="n">8.</span> Transferencia internacional de datos</h2>
-      <p>Algunos de los proveedores señalados en la Sección 7 procesan o almacenan datos en servidores ubicados fuera de Chile (por ejemplo, en los Estados Unidos de América). En dichos casos, el Responsable procura que la transferencia cuente con resguardos adecuados y que el proveedor ofrezca un nivel de protección conforme a la legislación chilena aplicable. El uso continuado de la Plataforma implica el conocimiento de esta circunstancia.</p>
+      <p>Algunos de los encargados señalados en la Sección 7 (en particular <b>Supabase Inc.</b> y <b>Google LLC</b>) tratan o almacenan datos en servidores ubicados fuera de Chile, principalmente en los <b>Estados Unidos de América</b>. Dichas transferencias se amparan en los <b>Acuerdos de Tratamiento de Datos (DPA)</b> suscritos con cada proveedor, que incorporan cláusulas contractuales de resguardo orientadas a asegurar un nivel de protección conforme a la legislación chilena aplicable. El uso continuado de la Plataforma no constituye, por sí solo, una garantía de transferencia.</p>
     </section>
 
     <section id="s9">
       <h2><span class="n">9.</span> Plazo de conservación</h2>
-      <p>Los datos se conservan mientras subsista la finalidad que motivó su tratamiento y durante los plazos exigidos por la normativa laboral, contable y tributaria vigente. Cumplidos dichos plazos, los datos se eliminan o se anonimizan de forma segura.</p>
+      <p>Los datos se conservan durante los plazos necesarios para las finalidades declaradas y los exigidos por la normativa aplicable, a título referencial:</p>
+      <table class="tbl">
+        <tr><th>Tipo de dato</th><th>Conservación</th></tr>
+        <tr><td>Documentos tributarios (facturas, comprobantes de pago)</td><td>Al menos 6 años, conforme al Código Tributario.</td></tr>
+        <tr><td>Actas de recepción con firma</td><td>Mientras subsista la relación operativa, más el plazo legal aplicable.</td></tr>
+        <tr><td>Datos de ubicación (GPS) y registros técnicos</td><td>Hasta 12 meses; luego se eliminan o anonimizan.</td></tr>
+        <tr><td>Datos de cuenta del conductor</td><td>Al término de la relación laboral se eliminan o bloquean, salvo obligación legal de conservación.</td></tr>
+      </table>
+      <p>Cumplidos dichos plazos, los datos se eliminan o se anonimizan de forma segura.</p>
     </section>
 
     <section id="s10">
-      <h2><span class="n">10.</span> Seguridad de la información</h2>
+      <h2><span class="n">10.</span> Seguridad de la información y brechas</h2>
       <p>El Responsable aplica medidas técnicas y organizativas razonables para proteger la confidencialidad, integridad y disponibilidad de la información, entre ellas:</p>
       <ul>
         <li><b>Cifrado en tránsito:</b> toda comunicación entre la Plataforma y los servidores se realiza mediante conexiones cifradas (HTTPS/TLS).</li>
@@ -189,26 +200,28 @@ a.inl:hover{border-bottom-color:var(--blue)}
         <li><b>Autenticación con expiración:</b> las sesiones caducan automáticamente, reduciendo el riesgo de accesos no autorizados.</li>
         <li><b>Minimización y respaldo:</b> se recopila solo lo necesario y se mantienen respaldos para asegurar la continuidad.</li>
       </ul>
-      <div class="callout">Ningún sistema es completamente infalible; no obstante, el Responsable adopta las medidas exigibles según el estado de la técnica y notificará las vulneraciones que corresponda conforme a la ley.</div>
+      <h3>Notificación de vulneraciones (brechas)</h3>
+      <p>En caso de una vulneración de seguridad que afecte datos personales, el Responsable adoptará las medidas de contención y, cuando corresponda conforme a la ley, notificará a la autoridad de control y a los titulares afectados sin dilación indebida.</p>
+      <div class="callout">Ningún sistema es completamente infalible; no obstante, el Responsable adopta las medidas exigibles según el estado de la técnica y las mejora de forma continua.</div>
     </section>
 
     <section id="s11">
       <h2><span class="n">11.</span> Derechos del titular</h2>
-      <p>Conforme a la Ley N° 19.628 y a la Ley N° 21.719, el titular puede ejercer, de forma gratuita, los siguientes derechos (conocidos como derechos <b>ARCOP</b>):</p>
+      <p>Conforme a la Ley N° 19.628 y a la Ley N° 21.719, el titular puede ejercer, de forma gratuita, los derechos <b>ARCOP</b> (Acceso, Rectificación, Cancelación/supresión, Oposición y Portabilidad), así como el derecho complementario de <b>bloqueo</b>:</p>
       <div class="rights">
         <div class="rc"><b>Acceso</b><span>Saber qué datos suyos se tratan y con qué fin.</span></div>
         <div class="rc"><b>Rectificación</b><span>Corregir datos inexactos o incompletos.</span></div>
         <div class="rc"><b>Cancelación / Supresión</b><span>Solicitar la eliminación cuando proceda.</span></div>
         <div class="rc"><b>Oposición</b><span>Oponerse a un tratamiento determinado.</span></div>
-        <div class="rc"><b>Portabilidad</b><span>Obtener sus datos en un formato estructurado.</span></div>
-        <div class="rc"><b>Bloqueo</b><span>Suspender temporalmente el tratamiento.</span></div>
+        <div class="rc"><b>Portabilidad</b><span>Recibir sus datos en formato estructurado, cuando el tratamiento sea automatizado y se funde en su consentimiento o en un contrato.</span></div>
+        <div class="rc"><b>Bloqueo</b><span>Suspender temporalmente el tratamiento (derecho complementario).</span></div>
       </div>
       <p>Estos derechos son personales, intransferibles e irrenunciables.</p>
     </section>
 
     <section id="s12">
       <h2><span class="n">12.</span> Ejercicio de derechos y reclamos</h2>
-      <p>El titular puede ejercer sus derechos escribiendo al correo indicado en la Sección 17, acreditando su identidad. El Responsable dará respuesta dentro de los plazos legales. Sin perjuicio de lo anterior, el titular podrá presentar reclamos ante la autoridad de control competente, en particular ante la <b>Agencia de Protección de Datos Personales</b> una vez que ésta entre en funciones conforme a la Ley N° 21.719.</p>
+      <p>El titular puede ejercer sus derechos escribiendo al canal indicado en la Sección 17, acreditando su identidad. El Responsable dará respuesta dentro de los plazos legales (en días hábiles). Sin perjuicio de lo anterior, el titular podrá reclamar ante la autoridad competente: una vez que entre en funciones la <b>Agencia de Protección de Datos Personales</b> creada por la Ley N° 21.719, ante dicha Agencia; y, en el período de transición, mediante los recursos que contempla la Ley N° 19.628 ante los tribunales ordinarios de justicia (acción de <i>habeas data</i>).</p>
     </section>
 
     <section id="s13">
@@ -218,7 +231,7 @@ a.inl:hover{border-bottom-color:var(--blue)}
 
     <section id="s14">
       <h2><span class="n">14.</span> Cookies y almacenamiento local</h2>
-      <p>La plataforma web utiliza almacenamiento local del navegador (por ejemplo, <i>localStorage</i>) con fines estrictamente funcionales: mantener la sesión iniciada y conservar temporalmente datos de la operación para su funcionamiento sin conexión. No se emplean cookies de seguimiento publicitario ni de terceros con fines de marketing.</p>
+      <p>La plataforma web utiliza almacenamiento local del navegador (por ejemplo, <i>localStorage</i>) con fines estrictamente funcionales: mantener la sesión iniciada y conservar temporalmente datos de la operación para su funcionamiento sin conexión. No se emplean cookies de seguimiento publicitario ni con fines de marketing. El único contacto con un tercero al cargar la interfaz web corresponde a la descarga de tipografías desde Google Fonts, con la finalidad funcional descrita en la Sección 7.</p>
     </section>
 
     <section id="s15">
@@ -238,8 +251,8 @@ a.inl:hover{border-bottom-color:var(--blue)}
     </section>
 
     <div class="foot">
-      <div class="sig">Comercial Santa Elena · AIPROTECH Repartidor</div>
-      Política de Privacidad y Seguridad de la Información — Versión 2.0, vigente desde el 30 de junio de 2026. Documento público emitido conforme a la Ley N° 19.628 y la Ley N° 21.719 de la República de Chile.
+      <div class="sig">Comercial Santa Elena · RUT 78.402.094-0 · AIPROTECH Repartidor</div>
+      Política de Privacidad y Seguridad de la Información — Versión 2.1, vigente desde el 30 de junio de 2026. Documento público emitido conforme a la Ley N° 19.628 y la Ley N° 21.719 de la República de Chile.
     </div>
   </div>
 </div>
