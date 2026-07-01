@@ -460,22 +460,18 @@ button,.btn,.pago,.action,.hero-scan,.navbtn{touch-action:manipulation}
       <button class="btn btn-primary" onclick="confirmSig()">Confirmar entrega</button>
     </div>
     <div style="text-align:center;margin-top:14px">
-      <span style="font-size:11px;color:var(--ink-faint)">o verifica con</span>
-      <div style="display:flex;gap:10px;margin-top:10px">
-        <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="firmarBiometria('FACIAL')">📷 Facial</button>
-        <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="firmarBiometria('HUELLA')">👆 Huella</button>
-      </div>
+      <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="firmarBiometria('CONFIRMAR')">✓ Confirmar sin firma · nombre + ubicación + hora</button>
     </div>
   </div>
   <!-- Overlay verificación biométrica -->
   <div class="sheet-bg" id="bioBg" onclick="closeBio()"></div>
   <div class="sheet" id="bioSheet" style="text-align:center">
     <div class="handle"></div>
-    <h2 id="bioTitle">Verificación facial</h2>
-    <div class="sub" id="bioSub">Mira a la cámara y mantén el rostro centrado</div>
+    <h2 id="bioTitle">Registrando recepción</h2>
+    <div class="sub" id="bioSub">Con el nombre de quien recibe, la ubicación y la hora</div>
     <div style="width:130px;height:130px;border-radius:50%;margin:18px auto;border:3px solid var(--gold);display:grid;place-items:center;position:relative;overflow:hidden">
-      <div id="bioScan" style="position:absolute;left:0;right:0;height:3px;background:var(--gold);box-shadow:0 0 12px var(--gold);top:0;animation:scanmove 2s ease-in-out infinite"></div>
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--ink-dim)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>
+      <div id="bioScan" style="display:none"></div>
+      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
     </div>
     <div id="bioResult" style="font-family:var(--mono);font-size:12px;color:var(--ink-dim);min-height:40px"></div>
     <div class="btn-row"><button class="btn btn-ghost" style="width:100%" onclick="closeBio()">Cancelar</button></div>
@@ -1349,12 +1345,12 @@ function guardarEntrega(){
   closeNuevaEntrega(); renderHome(); showToast('✓ Entrega agregada');
 }
 
-// ───────── GPS: envía ping de posición cada 15s ─────────
+// ───────── GPS: posición PUNTUAL (una vez al abrir la app y al confirmar cada entrega; NO seguimiento continuo) ─────────
 var ultimaPos = null, gpsAvisado = false;
 function startGps(){
   // Captura la posición REAL del conductor (sin backend demo); se adjunta a cada factura enviada.
   if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(function(p){
+    navigator.geolocation.getCurrentPosition(function(p){
       ultimaPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
       try{ localStorage.setItem('cp_ultimaPos', JSON.stringify(ultimaPos)); }catch(e){}
       gpsAvisado = false;
@@ -1370,6 +1366,7 @@ function startGps(){
 }
 // Sheet firma
 function openSheet(id){
+  try{ startGps(); }catch(e){}   // refresca la ubicación PUNTUAL al abrir la firma de la entrega
   selEntregaRemota = null;
   var sub = document.getElementById('firmaSub');
   // 1) Prioriza la entrega REAL cargada desde planta (Supabase), si la hay.
@@ -1469,7 +1466,7 @@ function actaPdf(e, receptor, factura, firmaData, tipoFirma){
     L('Guia despacho: '+((e&&e.guia)||'-'));
     L('Recibido por: '+receptor);
     L('Fecha: '+new Date().toLocaleString('es-CL'));
-    L('Verificacion: '+(tipoFirma==='BIOMETRICA'?'Biometrica':'Firma digital'));
+    L('Verificacion: '+((tipoFirma==='SIN_FIRMA'||tipoFirma==='BIOMETRICA')?'Recepcion confirmada (nombre, ubicacion, hora)':'Firma digital'));
     L('Estado: RECIBIDO CONFORME');
     doc.text('Firma:',40,y+12);
     if(firmaData){ try{ doc.addImage(firmaData,'PNG',90,y-4,170,64); }catch(e2){} }
@@ -2233,9 +2230,9 @@ function firmarBiometria(tipo){
   if(!receptor){ showToast('✍️ Ingresa el nombre de quien recibe antes de verificar'); document.getElementById('firmaReceptor').focus(); return; }
   window.__bioEnCurso = true; bioClearTimers();
   closeSheet();
-  document.getElementById('bioTitle').textContent = tipo==='FACIAL' ? 'Verificación facial' : 'Verificación de huella';
-  document.getElementById('bioSub').textContent = tipo==='FACIAL' ? 'Mira a la cámara y mantén el rostro centrado' : 'Coloca el dedo en el sensor';
-  document.getElementById('bioResult').textContent = 'Verificando…';
+  document.getElementById('bioTitle').textContent = 'Registrando recepción';
+  document.getElementById('bioSub').textContent = 'Con el nombre de quien recibe, la ubicación y la hora';
+  document.getElementById('bioResult').textContent = 'Registrando…';
   document.getElementById('bioBg').classList.add('open');
   document.getElementById('bioSheet').classList.add('open');
   var pos = (typeof ultimaPos!=='undefined' && ultimaPos) ? ultimaPos : null;
@@ -2267,7 +2264,7 @@ function renderBio(res){
       ? ('match '+(res.scoreMatch*100).toFixed(0)+'% · liveness '+(res.livenessScore*100).toFixed(0)+'%')
       : (new Date().toLocaleString('es-CL') + (res.lat!=null ? (' · GPS '+Number(res.lat).toFixed(4)+','+Number(res.lng).toFixed(4)) : ''));
     el.innerHTML = '<span style="color:var(--green)">✓ '+res.motivo+'</span><br><span style="color:var(--ink-dim);font-size:11px">'+detalle+'</span>';
-    _bioTimers.push(setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'BIOMETRICA',null,rcp,fac); renderHome(); generarActa(selEntregaRemota||e, rcp, fac, null, 'BIOMETRICA'); } cerrarEntregaRemota(rcp,'BIOMETRICA'); document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value=''; showToast('✓ Recepción conforme · entrega registrada'); }, 1400));
+    _bioTimers.push(setTimeout(function(){ closeBio(); var rcp=(document.getElementById('firmaReceptor').value||'').trim()||'Cliente'; var fac=(document.getElementById('firmaFactura').value||'').trim(); if(window.CP){ var e=CP.firmarEntrega(selEntregaId,'SIN_FIRMA',null,rcp,fac); renderHome(); generarActa(selEntregaRemota||e, rcp, fac, null, 'SIN_FIRMA'); } cerrarEntregaRemota(rcp,'SIN_FIRMA'); document.getElementById('firmaReceptor').value=''; document.getElementById('firmaFactura').value=''; showToast('✓ Recepción conforme · entrega registrada'); }, 1400));
   } else {
     el.innerHTML = '<span style="color:var(--red)">✗ '+res.motivo+'</span>';
     _bioTimers.push(setTimeout(closeBio, 2400));
